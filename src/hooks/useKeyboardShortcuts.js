@@ -50,6 +50,10 @@ export const useKeyboardShortcuts = ({
           onToolChange('circle');
           return;
         }
+        if (e.key === 't' || e.key === 'T') {
+          onToolChange('text');
+          return;
+        }
       }
       
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {

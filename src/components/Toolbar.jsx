@@ -1,5 +1,5 @@
 import React from 'react';
-import { MousePointer, Edit3, Minus, Square, Circle } from 'lucide-react';
+import { MousePointer, Edit3, Minus, Square, Circle, Type } from 'lucide-react';
 
 const Toolbar = React.memo(({ tool, onToolChange, onClearSelectedEdge }) => {
   const tools = [
@@ -7,7 +7,8 @@ const Toolbar = React.memo(({ tool, onToolChange, onClearSelectedEdge }) => {
     { id: 'edit', icon: Edit3, label: 'Édition (E)', shortcut: 'E' },
     { id: 'line', icon: Minus, label: 'Ligne (L)', shortcut: 'L' },
     { id: 'rectangle', icon: Square, label: 'Rectangle (R)', shortcut: 'R' },
-    { id: 'circle', icon: Circle, label: 'Cercle (C)', shortcut: 'C' }
+    { id: 'circle', icon: Circle, label: 'Cercle (C)', shortcut: 'C' },
+    { id: 'text', icon: Type, label: 'Texte (T)', shortcut: 'T' }
   ];
 
   const handleToolClick = (toolId) => {
