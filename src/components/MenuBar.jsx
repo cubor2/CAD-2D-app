@@ -64,6 +64,7 @@ const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
               label="Exporter en..."
               items={[
                 { label: 'SVG', onClick: () => handleMenuAction(() => onExport('svg')) },
+                { label: 'PNG', onClick: () => handleMenuAction(() => onExport('png')) },
                 { label: 'DXF', onClick: () => handleMenuAction(() => onExport('dxf')) },
               ]}
             />

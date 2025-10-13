@@ -49,8 +49,10 @@ const TopControls = React.memo(({
           Règles
         </label>
       </div>
-      <div className="text-sm">
-        Zoom: {((viewport.zoom / 3.779527559055118) * 100).toFixed(0)}%
+      <div className="text-sm flex items-center gap-2">
+        <span className="text-gray-400">1 unité = 1mm</span>
+        <span className="text-gray-600">|</span>
+        <span>Zoom: {((viewport.zoom / 3.779527559055118) * 100).toFixed(0)}%</span>
       </div>
       <button
         onClick={() => setDarkMode(!darkMode)}

@@ -391,58 +391,59 @@ const CADEditor = () => {
   }, [elements, guides, currentFileName]);
 
   const handleExport = useCallback((format) => {
-    if (format === 'svg') {
-      if (elements.length === 0) {
-        alert('Aucun élément à exporter !');
-        return;
+    if (elements.length === 0) {
+      alert('Aucun élément à exporter !');
+      return;
+    }
+    
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    
+    elements.forEach(el => {
+      if (el.type === 'line') {
+        minX = Math.min(minX, el.x1, el.x2);
+        minY = Math.min(minY, el.y1, el.y2);
+        maxX = Math.max(maxX, el.x1, el.x2);
+        maxY = Math.max(maxY, el.y1, el.y2);
+      } else if (el.type === 'rectangle') {
+        minX = Math.min(minX, el.x);
+        minY = Math.min(minY, el.y);
+        maxX = Math.max(maxX, el.x + el.width);
+        maxY = Math.max(maxY, el.y + el.height);
+      } else if (el.type === 'circle') {
+        const rx = el.radiusX || el.radius;
+        const ry = el.radiusY || el.radius;
+        minX = Math.min(minX, el.cx - rx);
+        minY = Math.min(minY, el.cy - ry);
+        maxX = Math.max(maxX, el.cx + rx);
+        maxY = Math.max(maxY, el.cy + ry);
+      } else if (el.type === 'arc') {
+        minX = Math.min(minX, el.cx - el.radius);
+        minY = Math.min(minY, el.cy - el.radius);
+        maxX = Math.max(maxX, el.cx + el.radius);
+        maxY = Math.max(maxY, el.cy + el.radius);
       }
-      
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      
-      elements.forEach(el => {
-        if (el.type === 'line') {
-          minX = Math.min(minX, el.x1, el.x2);
-          minY = Math.min(minY, el.y1, el.y2);
-          maxX = Math.max(maxX, el.x1, el.x2);
-          maxY = Math.max(maxY, el.y1, el.y2);
-        } else if (el.type === 'rectangle') {
-          minX = Math.min(minX, el.x);
-          minY = Math.min(minY, el.y);
-          maxX = Math.max(maxX, el.x + el.width);
-          maxY = Math.max(maxY, el.y + el.height);
-        } else if (el.type === 'circle') {
-          const rx = el.radiusX || el.radius;
-          const ry = el.radiusY || el.radius;
-          minX = Math.min(minX, el.cx - rx);
-          minY = Math.min(minY, el.cy - ry);
-          maxX = Math.max(maxX, el.cx + rx);
-          maxY = Math.max(maxY, el.cy + ry);
-        } else if (el.type === 'arc') {
-          minX = Math.min(minX, el.cx - el.radius);
-          minY = Math.min(minY, el.cy - el.radius);
-          maxX = Math.max(maxX, el.cx + el.radius);
-          maxY = Math.max(maxY, el.cy + el.radius);
-        }
-      });
-      
-      const padding = 10;
-      const width = maxX - minX + padding * 2;
-      const height = maxY - minY + padding * 2;
-      
-      let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX - padding} ${minY - padding} ${width} ${height}" width="${width}" height="${height}">\n`;
+    });
+    
+    const padding = 5;
+    const width = maxX - minX + padding * 2;
+    const height = maxY - minY + padding * 2;
+    
+    if (format === 'svg') {
+      let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX - padding} ${minY - padding} ${width} ${height}" width="${width}mm" height="${height}mm">\n`;
+      svgContent += `  <!-- 1 unité = 1mm -->\n`;
       
       elements.forEach(el => {
         if (el.type === 'line') {
-          svgContent += `  <line x1="${el.x1}" y1="${el.y1}" x2="${el.x2}" y2="${el.y2}" stroke="black" stroke-width="${el.strokeWidth || 1.5}" fill="none" />\n`;
+          svgContent += `  <line x1="${el.x1}" y1="${el.y1}" x2="${el.x2}" y2="${el.y2}" stroke="black" stroke-width="0.3" fill="none" />\n`;
         } else if (el.type === 'rectangle') {
-          svgContent += `  <rect x="${el.x}" y="${el.y}" width="${el.width}" height="${el.height}" stroke="black" stroke-width="${el.strokeWidth || 1.5}" fill="none" />\n`;
+          svgContent += `  <rect x="${el.x}" y="${el.y}" width="${el.width}" height="${el.height}" stroke="black" stroke-width="0.3" fill="none" />\n`;
         } else if (el.type === 'circle') {
           const rx = el.radiusX || el.radius;
           const ry = el.radiusY || el.radius;
           if (rx === ry) {
-            svgContent += `  <circle cx="${el.cx}" cy="${el.cy}" r="${rx}" stroke="black" stroke-width="${el.strokeWidth || 1.5}" fill="none" />\n`;
+            svgContent += `  <circle cx="${el.cx}" cy="${el.cy}" r="${rx}" stroke="black" stroke-width="0.3" fill="none" />\n`;
           } else {
-            svgContent += `  <ellipse cx="${el.cx}" cy="${el.cy}" rx="${rx}" ry="${ry}" stroke="black" stroke-width="${el.strokeWidth || 1.5}" fill="none" />\n`;
+            svgContent += `  <ellipse cx="${el.cx}" cy="${el.cy}" rx="${rx}" ry="${ry}" stroke="black" stroke-width="0.3" fill="none" />\n`;
           }
         } else if (el.type === 'arc') {
           const startX = el.cx + el.radius * Math.cos(el.startAngle);
@@ -450,7 +451,7 @@ const CADEditor = () => {
           const endX = el.cx + el.radius * Math.cos(el.endAngle);
           const endY = el.cy + el.radius * Math.sin(el.endAngle);
           const largeArc = (el.endAngle - el.startAngle) > Math.PI ? 1 : 0;
-          svgContent += `  <path d="M ${startX} ${startY} A ${el.radius} ${el.radius} 0 ${largeArc} 1 ${endX} ${endY}" stroke="black" stroke-width="${el.strokeWidth || 1.5}" fill="none" />\n`;
+          svgContent += `  <path d="M ${startX} ${startY} A ${el.radius} ${el.radius} 0 ${largeArc} 1 ${endX} ${endY}" stroke="black" stroke-width="0.3" fill="none" />\n`;
         }
       });
       
@@ -463,6 +464,62 @@ const CADEditor = () => {
       a.download = `${currentFileName}.svg`;
       a.click();
       URL.revokeObjectURL(url);
+    } else if (format === 'png') {
+      const scale = 3.7795275591;
+      const canvasWidth = Math.ceil(width * scale);
+      const canvasHeight = Math.ceil(height * scale);
+      
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = canvasWidth;
+      exportCanvas.height = canvasHeight;
+      const ctx = exportCanvas.getContext('2d');
+      
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      
+      ctx.save();
+      ctx.translate(-minX * scale + padding * scale, -minY * scale + padding * scale);
+      ctx.scale(scale, scale);
+      
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 0.3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      elements.forEach(el => {
+        ctx.beginPath();
+        if (el.type === 'line') {
+          ctx.moveTo(el.x1, el.y1);
+          ctx.lineTo(el.x2, el.y2);
+          ctx.stroke();
+        } else if (el.type === 'rectangle') {
+          ctx.rect(el.x, el.y, el.width, el.height);
+          ctx.stroke();
+        } else if (el.type === 'circle') {
+          const rx = el.radiusX || el.radius;
+          const ry = el.radiusY || el.radius;
+          if (rx === ry) {
+            ctx.arc(el.cx, el.cy, rx, 0, Math.PI * 2);
+          } else {
+            ctx.ellipse(el.cx, el.cy, rx, ry, 0, 0, Math.PI * 2);
+          }
+          ctx.stroke();
+        } else if (el.type === 'arc') {
+          ctx.arc(el.cx, el.cy, el.radius, el.startAngle, el.endAngle);
+          ctx.stroke();
+        }
+      });
+      
+      ctx.restore();
+      
+      exportCanvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentFileName}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, 'image/png');
     } else if (format === 'dxf') {
       alert('L\'export DXF sera bientôt implémenté !');
     }
