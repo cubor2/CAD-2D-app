@@ -84,10 +84,16 @@ Tous les dessins sont créés en millimètres pour une précision optimale lors 
 ### Interface
 - Mode clair/sombre
 - Historique complet d'actions (Undo/Redo)
-- Menu Édition avec toutes les commandes standard
+- Menus complets avec toutes les commandes standard :
+  * Menu Fichier (Nouveau, Ouvrir, Sauver, Exporter)
+  * Menu Édition (Annuler, Rétablir, Couper, Copier, Coller, Supprimer)
+  * Menu Objet (Grouper, Dégrouper)
 - Copier/coller avec décalage automatique
 - Panneau de propriétés dynamique
 - États de menu intelligents (désactivation si pas de sélection)
+- Feedback visuel lors des opérations :
+  * Flash vert lors du groupement
+  * Flash orange lors du dégroupement
 
 ## Export pour découpe laser
 
