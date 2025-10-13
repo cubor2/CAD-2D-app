@@ -407,6 +407,42 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         ctx.stroke();
       });
     }
+  } else if (el.type === 'text') {
+    const pos = worldToScreen(el.x, el.y, canvas, viewport);
+    
+    ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
+    ctx.fillStyle = isFlashing ? flashColor : (isSelected ? '#00aaff' : (el.fill || (darkMode ? '#ffffff' : '#000000')));
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(el.text, pos.x, pos.y);
+    
+    if (isSelected) {
+      const metrics = ctx.measureText(el.text);
+      const textWidth = metrics.width;
+      const textHeight = el.fontSize;
+      
+      ctx.strokeStyle = '#00aaff';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.strokeRect(pos.x, pos.y - textHeight, textWidth, textHeight);
+      ctx.setLineDash([]);
+      
+      const corners = [
+        { x: pos.x, y: pos.y - textHeight },
+        { x: pos.x + textWidth, y: pos.y - textHeight },
+        { x: pos.x, y: pos.y },
+        { x: pos.x + textWidth, y: pos.y }
+      ];
+      
+      corners.forEach(pt => {
+        ctx.fillStyle = '#00aaff';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+    }
   }
 
   ctx.restore();

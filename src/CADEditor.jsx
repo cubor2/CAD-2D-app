@@ -195,6 +195,9 @@ const CADEditor = () => {
         } else if (el.type === 'arc') {
           newEl.cx += offset;
           newEl.cy += offset;
+        } else if (el.type === 'text') {
+          newEl.x += offset;
+          newEl.y += offset;
         }
         return newEl;
       });
@@ -311,6 +314,8 @@ const CADEditor = () => {
         return { ...el, cx: el.cx + dx, cy: el.cy + dy };
       } else if (el.type === 'arc') {
         return { ...el, cx: el.cx + dx, cy: el.cy + dy };
+      } else if (el.type === 'text') {
+        return { ...el, x: el.x + dx, y: el.y + dy };
       }
       return el;
     }));
@@ -400,6 +405,9 @@ const CADEditor = () => {
     
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     
+    const canvas = getCanvasRef().current;
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    
     elements.forEach(el => {
       if (el.type === 'line') {
         minX = Math.min(minX, el.x1, el.x2);
@@ -423,6 +431,17 @@ const CADEditor = () => {
         minY = Math.min(minY, el.cy - el.radius);
         maxX = Math.max(maxX, el.cx + el.radius);
         maxY = Math.max(maxY, el.cy + el.radius);
+      } else if (el.type === 'text' && ctx) {
+        ctx.save();
+        ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
+        const metrics = ctx.measureText(el.text);
+        const textWidth = metrics.width;
+        const textHeight = el.fontSize;
+        ctx.restore();
+        minX = Math.min(minX, el.x);
+        minY = Math.min(minY, el.y - textHeight);
+        maxX = Math.max(maxX, el.x + textWidth);
+        maxY = Math.max(maxY, el.y);
       }
     });
     
@@ -454,6 +473,9 @@ const CADEditor = () => {
           const endY = el.cy + el.radius * Math.sin(el.endAngle);
           const largeArc = (el.endAngle - el.startAngle) > Math.PI ? 1 : 0;
           svgContent += `  <path d="M ${startX} ${startY} A ${el.radius} ${el.radius} 0 ${largeArc} 1 ${endX} ${endY}" stroke="black" stroke-width="0.3" fill="none" />\n`;
+        } else if (el.type === 'text') {
+          const escapedText = el.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          svgContent += `  <text x="${el.x}" y="${el.y}" font-family="${el.fontFamily}" font-size="${el.fontSize}" font-weight="${el.fontWeight}" font-style="${el.fontStyle}" fill="black">${escapedText}</text>\n`;
         }
       });
       
@@ -489,26 +511,33 @@ const CADEditor = () => {
       ctx.lineJoin = 'round';
       
       elements.forEach(el => {
-        ctx.beginPath();
-        if (el.type === 'line') {
-          ctx.moveTo(el.x1, el.y1);
-          ctx.lineTo(el.x2, el.y2);
-          ctx.stroke();
-        } else if (el.type === 'rectangle') {
-          ctx.rect(el.x, el.y, el.width, el.height);
-          ctx.stroke();
-        } else if (el.type === 'circle') {
-          const rx = el.radiusX || el.radius;
-          const ry = el.radiusY || el.radius;
-          if (rx === ry) {
-            ctx.arc(el.cx, el.cy, rx, 0, Math.PI * 2);
-          } else {
-            ctx.ellipse(el.cx, el.cy, rx, ry, 0, 0, Math.PI * 2);
+        if (el.type === 'text') {
+          ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
+          ctx.fillStyle = 'black';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(el.text, el.x, el.y);
+        } else {
+          ctx.beginPath();
+          if (el.type === 'line') {
+            ctx.moveTo(el.x1, el.y1);
+            ctx.lineTo(el.x2, el.y2);
+            ctx.stroke();
+          } else if (el.type === 'rectangle') {
+            ctx.rect(el.x, el.y, el.width, el.height);
+            ctx.stroke();
+          } else if (el.type === 'circle') {
+            const rx = el.radiusX || el.radius;
+            const ry = el.radiusY || el.radius;
+            if (rx === ry) {
+              ctx.arc(el.cx, el.cy, rx, 0, Math.PI * 2);
+            } else {
+              ctx.ellipse(el.cx, el.cy, rx, ry, 0, 0, Math.PI * 2);
+            }
+            ctx.stroke();
+          } else if (el.type === 'arc') {
+            ctx.arc(el.cx, el.cy, el.radius, el.startAngle, el.endAngle);
+            ctx.stroke();
           }
-          ctx.stroke();
-        } else if (el.type === 'arc') {
-          ctx.arc(el.cx, el.cy, el.radius, el.startAngle, el.endAngle);
-          ctx.stroke();
         }
       });
       
@@ -645,6 +674,18 @@ const CADEditor = () => {
           
           const clickAngle = Math.atan2(dy, dx);
           return isAngleBetween(clickAngle, el.startAngle, el.endAngle);
+        } else if (el.type === 'text') {
+          const canvas = getCanvasRef().current;
+          if (!canvas) return false;
+          const ctx = canvas.getContext('2d');
+          ctx.save();
+          ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
+          const metrics = ctx.measureText(el.text);
+          const textWidth = metrics.width / viewport.zoom;
+          const textHeight = el.fontSize / viewport.zoom;
+          ctx.restore();
+          return snapped.x >= el.x && snapped.x <= el.x + textWidth &&
+                 snapped.y - textHeight <= el.y && snapped.y >= el.y;
         }
         return false;
       });
@@ -766,6 +807,24 @@ const CADEditor = () => {
       return;
     }
 
+    if (tool === 'text') {
+      const newText = {
+        id: getNextId(),
+        type: 'text',
+        x: snapped.x,
+        y: snapped.y,
+        text: 'Texte',
+        fontSize: 16,
+        fontFamily: 'Arial',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        fill: darkMode ? '#ffffff' : '#000000'
+      };
+      updateElements([...elements, newText]);
+      setSelectedIds([newText.id]);
+      return;
+    }
+
     setIsDrawing(true);
     setStartPoint(snapped);
     setDrawOrigin(snapped);
@@ -774,7 +833,7 @@ const CADEditor = () => {
       type: tool,
       ...snapped
     });
-  }, [showRulers, guides, worldToScreenWrapper, spacePressed, startPan, tool, elements, viewport, selectedIds, toggleSelection, selectGroup, setSelectedIds, clearSelection, getNextId, applySnap, screenToWorldWrapper, pointToLineDistance, isAngleBetween, setSelectedEdge, setEditingPoint]);
+  }, [showRulers, guides, worldToScreenWrapper, spacePressed, startPan, tool, elements, viewport, selectedIds, toggleSelection, selectGroup, setSelectedIds, clearSelection, getNextId, applySnap, screenToWorldWrapper, pointToLineDistance, isAngleBetween, setSelectedEdge, setEditingPoint, darkMode, updateElements]);
 
   const handleMouseMove = useCallback((e) => {
     const canvas = getCanvasRef().current;
@@ -959,6 +1018,8 @@ const CADEditor = () => {
           return { ...el, cx: el.cx + dx, cy: el.cy + dy };
         } else if (el.type === 'arc') {
           return { ...el, cx: el.cx + dx, cy: el.cy + dy };
+        } else if (el.type === 'text') {
+          return { ...el, x: el.x + dx, y: el.y + dy };
         }
         return el;
       }));
@@ -1092,6 +1153,8 @@ const CADEditor = () => {
           corners.push(worldToScreenWrapper(el.cx, el.cy));
         } else if (el.type === 'arc') {
           corners.push(worldToScreenWrapper(el.cx, el.cy));
+        } else if (el.type === 'text') {
+          corners.push(worldToScreenWrapper(el.x, el.y));
         }
         return corners.some(c => 
           c.x >= boxWorld.x1 && c.x <= boxWorld.x2 &&
