@@ -49,14 +49,15 @@ Tous les dessins sont créés en millimètres pour une précision optimale lors 
 - **Shift + Flèches** : Déplacer les éléments sélectionnés (5mm)
 
 ### Édition
-- **Ctrl/Cmd + C** : Copier
+- **Ctrl/Cmd + Z** : Annuler
+- **Ctrl/Cmd + Y** ou **Ctrl/Cmd + Shift + Z** : Rétablir
 - **Ctrl/Cmd + X** : Couper
+- **Ctrl/Cmd + C** : Copier
 - **Ctrl/Cmd + V** : Coller
 - **Shift + Ctrl/Cmd + V** : Coller sur place
-- **Ctrl/Cmd + Z** : Annuler
+- **Delete/Backspace** : Supprimer les éléments sélectionnés
 - **Ctrl/Cmd + G** : Grouper les éléments sélectionnés
 - **Ctrl/Cmd + Shift + G** : Dégrouper
-- **Delete/Backspace** : Supprimer les éléments sélectionnés
 - **Shift + Clic** : Ajouter/retirer de la sélection
 
 ### Dessin
@@ -82,9 +83,11 @@ Tous les dessins sont créés en millimètres pour une précision optimale lors 
 
 ### Interface
 - Mode clair/sombre
-- Historique d'actions (Undo)
+- Historique complet d'actions (Undo/Redo)
+- Menu Édition avec toutes les commandes standard
 - Copier/coller avec décalage automatique
 - Panneau de propriétés dynamique
+- États de menu intelligents (désactivation si pas de sélection)
 
 ## Export pour découpe laser
 
