@@ -403,8 +403,11 @@ const CADEditor = () => {
           return snapped.x >= el.x && snapped.x <= el.x + el.width &&
                  snapped.y >= el.y && snapped.y <= el.y + el.height;
         } else if (el.type === 'circle') {
-          const dist = Math.sqrt((snapped.x - el.cx) ** 2 + (snapped.y - el.cy) ** 2);
-          return dist <= el.radius;
+          const radiusX = el.radiusX || el.radius;
+          const radiusY = el.radiusY || el.radius;
+          const dx = snapped.x - el.cx;
+          const dy = snapped.y - el.cy;
+          return ((dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY)) <= 1;
         } else if (el.type === 'arc') {
           const dx = snapped.x - el.cx;
           const dy = snapped.y - el.cy;
@@ -464,11 +467,13 @@ const CADEditor = () => {
             { x: el.x, y: el.y + el.height / 2, label: 'left' }
           ];
         } else if (el.type === 'circle') {
+          const radiusX = el.radiusX || el.radius;
+          const radiusY = el.radiusY || el.radius;
           controlPoints = [
-            { x: el.cx + el.radius, y: el.cy, label: 'right' },
-            { x: el.cx - el.radius, y: el.cy, label: 'left' },
-            { x: el.cx, y: el.cy + el.radius, label: 'bottom' },
-            { x: el.cx, y: el.cy - el.radius, label: 'top' }
+            { x: el.cx + radiusX, y: el.cy, label: 'right' },
+            { x: el.cx - radiusX, y: el.cy, label: 'left' },
+            { x: el.cx, y: el.cy + radiusY, label: 'bottom' },
+            { x: el.cx, y: el.cy - radiusY, label: 'top' }
           ];
         } else if (el.type === 'arc') {
           controlPoints = [
@@ -500,8 +505,11 @@ const CADEditor = () => {
           return snapped.x >= el.x && snapped.x <= el.x + el.width &&
                  snapped.y >= el.y && snapped.y <= el.y + el.height;
         } else if (el.type === 'circle') {
-          const dist = Math.sqrt((snapped.x - el.cx) ** 2 + (snapped.y - el.cy) ** 2);
-          return dist <= el.radius;
+          const radiusX = el.radiusX || el.radius;
+          const radiusY = el.radiusY || el.radius;
+          const dx = snapped.x - el.cx;
+          const dy = snapped.y - el.cy;
+          return ((dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY)) <= 1;
         } else if (el.type === 'arc') {
           const dx = snapped.x - el.cx;
           const dy = snapped.y - el.cy;
@@ -667,10 +675,27 @@ const CADEditor = () => {
           ));
         }
       } else if (el.type === 'circle') {
-        const newRadius = Math.sqrt((snapped.x - el.cx) ** 2 + (snapped.y - el.cy) ** 2);
-        setElements(prev => prev.map(item =>
-          item.id === el.id ? { ...item, radius: newRadius } : item
-        ));
+        if (editingPoint.pointType === 'right') {
+          const newRadiusX = Math.abs(snapped.x - el.cx);
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, radiusX: newRadiusX, radius: newRadiusX } : item
+          ));
+        } else if (editingPoint.pointType === 'left') {
+          const newRadiusX = Math.abs(snapped.x - el.cx);
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, radiusX: newRadiusX, radius: newRadiusX } : item
+          ));
+        } else if (editingPoint.pointType === 'top') {
+          const newRadiusY = Math.abs(snapped.y - el.cy);
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, radiusY: newRadiusY, radius: newRadiusY } : item
+          ));
+        } else if (editingPoint.pointType === 'bottom') {
+          const newRadiusY = Math.abs(snapped.y - el.cy);
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, radiusY: newRadiusY, radius: newRadiusY } : item
+          ));
+        }
       } else if (el.type === 'arc') {
         if (editingPoint.pointType === 'start') {
           const dx = snapped.x - el.cx;
