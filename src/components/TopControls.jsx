@@ -14,7 +14,7 @@ const TopControls = React.memo(({
   setDarkMode
 }) => {
   return (
-    <div className="absolute top-4 left-4 bg-gray-800 rounded px-4 py-2 flex gap-4 items-center">
+    <div className="absolute top-4 right-4 bg-gray-800 rounded px-4 py-2 flex gap-4 items-center z-10">
       <div className="flex items-center gap-2">
         <label className="flex items-center gap-1 text-sm">
           <input 

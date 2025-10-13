@@ -10,6 +10,10 @@ export const useKeyboardShortcuts = ({
   onGroup,
   onUngroup,
   onMoveElements,
+  onNew,
+  onOpen,
+  onSave,
+  onSaveAs,
   selectedIds,
   tool,
   selectedEdge
@@ -70,6 +74,30 @@ export const useKeyboardShortcuts = ({
         return;
       }
       
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n' && !e.shiftKey) {
+        e.preventDefault();
+        onNew();
+        return;
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o' && !e.shiftKey) {
+        e.preventDefault();
+        onOpen();
+        return;
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+        e.preventDefault();
+        onSaveAs();
+        return;
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key === 's' && !e.shiftKey) {
+        e.preventDefault();
+        onSave();
+        return;
+      }
+      
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         onUndo();
@@ -127,7 +155,7 @@ export const useKeyboardShortcuts = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedIds, tool, selectedEdge, onToolChange, onUndo, onCopy, onCut, onPaste, onDelete, onGroup, onUngroup, onMoveElements]);
+  }, [selectedIds, tool, selectedEdge, onToolChange, onUndo, onCopy, onCut, onPaste, onDelete, onGroup, onUngroup, onMoveElements, onNew, onOpen, onSave, onSaveAs]);
 
   return { spacePressed };
 };

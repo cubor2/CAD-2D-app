@@ -1,9 +1,10 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import Toolbar from './components/Toolbar';
 import Canvas from './components/Canvas';
 import PropertiesPanel from './components/PropertiesPanel';
 import TopControls from './components/TopControls';
 import ContextMenu from './components/ContextMenu';
+import MenuBar from './components/MenuBar';
 import { useViewport } from './hooks/useViewport';
 import { useElements } from './hooks/useElements';
 import { useSelection } from './hooks/useSelection';
@@ -43,6 +44,8 @@ const CADEditor = () => {
   const [pasteCount, setPasteCount] = useState(0);
   
   const [contextMenu, setContextMenu] = useState(null);
+  const [currentFileName, setCurrentFileName] = useState('Untitled');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const { viewport, isPanning, handlePan, handleZoom, startPan, endPan } = useViewport();
   
@@ -311,6 +314,127 @@ const CADEditor = () => {
     }));
   }, [selectedIds, setElements]);
 
+  const handleNew = useCallback(() => {
+    if (hasUnsavedChanges) {
+      const confirm = window.confirm('You have unsaved changes. Are you sure you want to create a new project?');
+      if (!confirm) return;
+    }
+    updateElements([]);
+    setSelectedIds([]);
+    clearSelection();
+    setCurrentFileName('Untitled');
+    setHasUnsavedChanges(false);
+  }, [hasUnsavedChanges, updateElements, setSelectedIds, clearSelection]);
+
+  const handleOpen = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target.result);
+          updateElements(data.elements || []);
+          setGuides(data.guides || []);
+          setCurrentFileName(file.name.replace('.json', ''));
+          setHasUnsavedChanges(false);
+        } catch (error) {
+          alert('Error loading file: ' + error.message);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, [updateElements, setGuides]);
+
+  const handleSave = useCallback(() => {
+    const data = {
+      elements,
+      guides,
+      version: '1.0'
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentFileName}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setHasUnsavedChanges(false);
+  }, [elements, guides, currentFileName]);
+
+  const handleSaveAs = useCallback(() => {
+    const newName = prompt('Enter file name:', currentFileName);
+    if (!newName) return;
+    
+    setCurrentFileName(newName);
+    
+    const data = {
+      elements,
+      guides,
+      version: '1.0'
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${newName}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setHasUnsavedChanges(false);
+  }, [elements, guides, currentFileName]);
+
+  const handleExport = useCallback((format) => {
+    if (format === 'svg') {
+      let svgContent = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">\n';
+      
+      elements.forEach(el => {
+        if (el.type === 'line') {
+          svgContent += `  <line x1="${el.x1}" y1="${el.y1}" x2="${el.x2}" y2="${el.y2}" stroke="${el.stroke || 'black'}" stroke-width="${el.strokeWidth || 1.5}" />\n`;
+        } else if (el.type === 'rectangle') {
+          svgContent += `  <rect x="${el.x}" y="${el.y}" width="${el.width}" height="${el.height}" fill="none" stroke="${el.stroke || 'black'}" stroke-width="${el.strokeWidth || 1.5}" />\n`;
+        } else if (el.type === 'circle') {
+          const rx = el.radiusX || el.radius;
+          const ry = el.radiusY || el.radius;
+          if (rx === ry) {
+            svgContent += `  <circle cx="${el.cx}" cy="${el.cy}" r="${rx}" fill="none" stroke="${el.stroke || 'black'}" stroke-width="${el.strokeWidth || 1.5}" />\n`;
+          } else {
+            svgContent += `  <ellipse cx="${el.cx}" cy="${el.cy}" rx="${rx}" ry="${ry}" fill="none" stroke="${el.stroke || 'black'}" stroke-width="${el.strokeWidth || 1.5}" />\n`;
+          }
+        } else if (el.type === 'arc') {
+          const startX = el.cx + el.radius * Math.cos(el.startAngle);
+          const startY = el.cy + el.radius * Math.sin(el.startAngle);
+          const endX = el.cx + el.radius * Math.cos(el.endAngle);
+          const endY = el.cy + el.radius * Math.sin(el.endAngle);
+          const largeArc = (el.endAngle - el.startAngle) > Math.PI ? 1 : 0;
+          svgContent += `  <path d="M ${startX} ${startY} A ${el.radius} ${el.radius} 0 ${largeArc} 1 ${endX} ${endY}" fill="none" stroke="${el.stroke || 'black'}" stroke-width="${el.strokeWidth || 1.5}" />\n`;
+        }
+      });
+      
+      svgContent += '</svg>';
+      
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentFileName}.svg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (format === 'dxf') {
+      alert('DXF export will be implemented soon!');
+    }
+  }, [elements, currentFileName]);
+
+  useEffect(() => {
+    setHasUnsavedChanges(true);
+  }, [elements]);
+
   const { spacePressed } = useKeyboardShortcuts({
     onToolChange: handleToolChange,
     onUndo: undo,
@@ -321,6 +445,10 @@ const CADEditor = () => {
     onGroup: createGroup,
     onUngroup: ungroupSelected,
     onMoveElements: handleMoveElements,
+    onNew: handleNew,
+    onOpen: handleOpen,
+    onSave: handleSave,
+    onSaveAs: handleSaveAs,
     selectedIds,
     tool,
     selectedEdge
@@ -901,65 +1029,75 @@ const CADEditor = () => {
   }, [handleZoom]);
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white">
-      <Toolbar 
-        tool={tool} 
-        onToolChange={handleToolChange}
-        onClearSelectedEdge={() => setSelectedEdge(null)}
+    <div className="flex flex-col h-screen bg-gray-900 text-white">
+      <MenuBar
+        onNew={handleNew}
+        onOpen={handleOpen}
+        onSave={handleSave}
+        onSaveAs={handleSaveAs}
+        onExport={handleExport}
       />
+      
+      <div className="flex flex-1">
+        <Toolbar 
+          tool={tool} 
+          onToolChange={handleToolChange}
+          onClearSelectedEdge={() => setSelectedEdge(null)}
+        />
 
-      <div className="flex-1 relative">
-        <Canvas
-          viewport={viewport}
+        <div className="flex-1 relative">
+          <TopControls
+            snapToGrid={snapToGrid}
+            setSnapToGrid={setSnapToGrid}
+            snapToElements={snapToElements}
+            setSnapToElements={setSnapToElements}
+            showDimensions={showDimensions}
+            setShowDimensions={setShowDimensions}
+            showRulers={showRulers}
+            setShowRulers={setShowRulers}
+            viewport={viewport}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+          />
+          
+          <Canvas
+            viewport={viewport}
+            elements={elements}
+            selectedIds={selectedIds}
+            currentElement={currentElement}
+            snapPoint={snapPoint}
+            selectionBox={selectionBox}
+            drawOrigin={drawOrigin}
+            selectedEdge={selectedEdge}
+            showDimensions={showDimensions}
+            darkMode={darkMode}
+            showRulers={showRulers}
+            guides={guides}
+            flashingIds={flashingIds}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onWheel={handleWheel}
+            onContextMenu={(e) => e.preventDefault()}
+            cursor={cursor}
+          />
+          
+          <ContextMenu
+            contextMenu={contextMenu}
+            selectedIds={selectedIds}
+            groups={groups}
+            onGroup={createGroup}
+            onUngroup={ungroupSelected}
+            onClose={() => setContextMenu(null)}
+          />
+        </div>
+
+        <PropertiesPanel
+          selectedIds={selectedIds}
           elements={elements}
-          selectedIds={selectedIds}
-          currentElement={currentElement}
-          snapPoint={snapPoint}
-          selectionBox={selectionBox}
-          drawOrigin={drawOrigin}
-          selectedEdge={selectedEdge}
-          showDimensions={showDimensions}
-          darkMode={darkMode}
-          showRulers={showRulers}
-          guides={guides}
-          flashingIds={flashingIds}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onWheel={handleWheel}
-          onContextMenu={(e) => e.preventDefault()}
-          cursor={cursor}
-        />
-        
-        <ContextMenu
-          contextMenu={contextMenu}
-          selectedIds={selectedIds}
-          groups={groups}
-          onGroup={createGroup}
-          onUngroup={ungroupSelected}
-          onClose={() => setContextMenu(null)}
-        />
-        
-        <TopControls
-          snapToGrid={snapToGrid}
-          setSnapToGrid={setSnapToGrid}
-          snapToElements={snapToElements}
-          setSnapToElements={setSnapToElements}
-          showDimensions={showDimensions}
-          setShowDimensions={setShowDimensions}
-          showRulers={showRulers}
-          setShowRulers={setShowRulers}
-          viewport={viewport}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
+          onUpdateElement={updateElement}
         />
       </div>
-
-      <PropertiesPanel
-        selectedIds={selectedIds}
-        elements={elements}
-        onUpdateElement={updateElement}
-      />
     </div>
   );
 };
