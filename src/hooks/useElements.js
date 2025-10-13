@@ -46,6 +46,15 @@ export const useElements = () => {
     return false;
   };
 
+  const redo = () => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(prev => prev + 1);
+      setElements(history[historyIndex + 1]);
+      return true;
+    }
+    return false;
+  };
+
   const getNextId = () => nextIdRef.current++;
 
   return {
@@ -56,6 +65,7 @@ export const useElements = () => {
     deleteElements,
     updateElement,
     undo,
+    redo,
     history,
     historyIndex,
     getNextId

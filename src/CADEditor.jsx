@@ -57,6 +57,7 @@ const CADEditor = () => {
     deleteElements,
     updateElement,
     undo,
+    redo,
     getNextId
   } = useElements();
   
@@ -532,6 +533,7 @@ const CADEditor = () => {
   const { spacePressed } = useKeyboardShortcuts({
     onToolChange: handleToolChange,
     onUndo: undo,
+    onRedo: redo,
     onCopy: handleCopy,
     onCut: handleCut,
     onPaste: handlePaste,
@@ -1130,6 +1132,13 @@ const CADEditor = () => {
         onSave={handleSave}
         onSaveAs={handleSaveAs}
         onExport={handleExport}
+        onUndo={undo}
+        onRedo={redo}
+        onCut={handleCut}
+        onCopy={handleCopy}
+        onPaste={handlePaste}
+        onDelete={handleDelete}
+        hasSelection={selectedIds.length > 0}
       />
       
       <div className="flex flex-1">

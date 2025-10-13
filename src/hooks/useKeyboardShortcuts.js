@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 export const useKeyboardShortcuts = ({
   onToolChange,
   onUndo,
+  onRedo,
   onCopy,
   onCut,
   onPaste,
@@ -104,6 +105,12 @@ export const useKeyboardShortcuts = ({
         return;
       }
       
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+        e.preventDefault();
+        onRedo();
+        return;
+      }
+      
       if ((e.ctrlKey || e.metaKey) && e.key === 'g' && !e.shiftKey) {
         e.preventDefault();
         if (selectedIds.length >= 2) {
@@ -155,7 +162,7 @@ export const useKeyboardShortcuts = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedIds, tool, selectedEdge, onToolChange, onUndo, onCopy, onCut, onPaste, onDelete, onGroup, onUngroup, onMoveElements, onNew, onOpen, onSave, onSaveAs]);
+  }, [selectedIds, tool, selectedEdge, onToolChange, onUndo, onRedo, onCopy, onCut, onPaste, onDelete, onGroup, onUngroup, onMoveElements, onNew, onOpen, onSave, onSaveAs]);
 
   return { spacePressed };
 };

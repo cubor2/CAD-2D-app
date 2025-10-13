@@ -1,6 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
+const MenuBar = React.memo(({ 
+  onNew, 
+  onOpen, 
+  onSave, 
+  onSaveAs, 
+  onExport,
+  onUndo,
+  onRedo,
+  onCut,
+  onCopy,
+  onPaste,
+  onDelete,
+  hasSelection
+}) => {
   const [openMenu, setOpenMenu] = useState(null);
   const menuRef = useRef(null);
 
@@ -85,6 +98,46 @@ const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
         >
           Édition
         </button>
+        
+        {openMenu === 'edit' && (
+          <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg z-50">
+            <MenuItem 
+              label="Annuler" 
+              shortcut="Ctrl + Z"
+              onClick={() => handleMenuAction(onUndo)}
+            />
+            <MenuItem 
+              label="Rétablir" 
+              shortcut="Ctrl + Shift + Z"
+              onClick={() => handleMenuAction(onRedo)}
+            />
+            <div className="h-px bg-gray-300 dark:bg-gray-700 my-1" />
+            <MenuItem 
+              label="Couper" 
+              shortcut="Ctrl + X"
+              onClick={() => handleMenuAction(onCut)}
+              disabled={!hasSelection}
+            />
+            <MenuItem 
+              label="Copier" 
+              shortcut="Ctrl + C"
+              onClick={() => handleMenuAction(onCopy)}
+              disabled={!hasSelection}
+            />
+            <MenuItem 
+              label="Coller" 
+              shortcut="Ctrl + V"
+              onClick={() => handleMenuAction(onPaste)}
+            />
+            <div className="h-px bg-gray-300 dark:bg-gray-700 my-1" />
+            <MenuItem 
+              label="Supprimer" 
+              shortcut="Delete"
+              onClick={() => handleMenuAction(onDelete)}
+              disabled={!hasSelection}
+            />
+          </div>
+        )}
       </div>
 
       <div className="relative ml-2">
@@ -126,10 +179,15 @@ const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
   );
 });
 
-const MenuItem = ({ label, shortcut, onClick }) => (
+const MenuItem = ({ label, shortcut, onClick, disabled }) => (
   <button
-    onClick={onClick}
-    className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex justify-between items-center text-left transition-colors"
+    onClick={disabled ? undefined : onClick}
+    className={`w-full px-4 py-2 flex justify-between items-center text-left transition-colors ${
+      disabled 
+        ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' 
+        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+    }`}
+    disabled={disabled}
   >
     <span>{label}</span>
     {shortcut && <span className="text-gray-500 dark:text-gray-400 text-xs ml-8">{shortcut}</span>}
