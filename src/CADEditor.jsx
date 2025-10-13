@@ -44,7 +44,7 @@ const CADEditor = () => {
   const [pasteCount, setPasteCount] = useState(0);
   
   const [contextMenu, setContextMenu] = useState(null);
-  const [currentFileName, setCurrentFileName] = useState('Untitled');
+  const [currentFileName, setCurrentFileName] = useState('Sans titre');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const { viewport, isPanning, handlePan, handleZoom, startPan, endPan } = useViewport();
@@ -316,13 +316,13 @@ const CADEditor = () => {
 
   const handleNew = useCallback(() => {
     if (hasUnsavedChanges) {
-      const confirm = window.confirm('You have unsaved changes. Are you sure you want to create a new project?');
+      const confirm = window.confirm('Vous avez des modifications non enregistrées. Voulez-vous vraiment créer un nouveau projet ?');
       if (!confirm) return;
     }
     updateElements([]);
     setSelectedIds([]);
     clearSelection();
-    setCurrentFileName('Untitled');
+    setCurrentFileName('Sans titre');
     setHasUnsavedChanges(false);
   }, [hasUnsavedChanges, updateElements, setSelectedIds, clearSelection]);
 
@@ -343,7 +343,7 @@ const CADEditor = () => {
           setCurrentFileName(file.name.replace('.json', ''));
           setHasUnsavedChanges(false);
         } catch (error) {
-          alert('Error loading file: ' + error.message);
+          alert('Erreur lors du chargement du fichier : ' + error.message);
         }
       };
       reader.readAsText(file);
@@ -369,7 +369,7 @@ const CADEditor = () => {
   }, [elements, guides, currentFileName]);
 
   const handleSaveAs = useCallback(() => {
-    const newName = prompt('Enter file name:', currentFileName);
+    const newName = prompt('Entrez le nom du fichier :', currentFileName);
     if (!newName) return;
     
     setCurrentFileName(newName);
@@ -392,20 +392,57 @@ const CADEditor = () => {
 
   const handleExport = useCallback((format) => {
     if (format === 'svg') {
-      let svgContent = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">\n';
+      if (elements.length === 0) {
+        alert('Aucun élément à exporter !');
+        return;
+      }
+      
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       
       elements.forEach(el => {
         if (el.type === 'line') {
-          svgContent += `  <line x1="${el.x1}" y1="${el.y1}" x2="${el.x2}" y2="${el.y2}" stroke="${el.stroke || 'black'}" stroke-width="${el.strokeWidth || 1.5}" />\n`;
+          minX = Math.min(minX, el.x1, el.x2);
+          minY = Math.min(minY, el.y1, el.y2);
+          maxX = Math.max(maxX, el.x1, el.x2);
+          maxY = Math.max(maxY, el.y1, el.y2);
         } else if (el.type === 'rectangle') {
-          svgContent += `  <rect x="${el.x}" y="${el.y}" width="${el.width}" height="${el.height}" fill="none" stroke="${el.stroke || 'black'}" stroke-width="${el.strokeWidth || 1.5}" />\n`;
+          minX = Math.min(minX, el.x);
+          minY = Math.min(minY, el.y);
+          maxX = Math.max(maxX, el.x + el.width);
+          maxY = Math.max(maxY, el.y + el.height);
+        } else if (el.type === 'circle') {
+          const rx = el.radiusX || el.radius;
+          const ry = el.radiusY || el.radius;
+          minX = Math.min(minX, el.cx - rx);
+          minY = Math.min(minY, el.cy - ry);
+          maxX = Math.max(maxX, el.cx + rx);
+          maxY = Math.max(maxY, el.cy + ry);
+        } else if (el.type === 'arc') {
+          minX = Math.min(minX, el.cx - el.radius);
+          minY = Math.min(minY, el.cy - el.radius);
+          maxX = Math.max(maxX, el.cx + el.radius);
+          maxY = Math.max(maxY, el.cy + el.radius);
+        }
+      });
+      
+      const padding = 10;
+      const width = maxX - minX + padding * 2;
+      const height = maxY - minY + padding * 2;
+      
+      let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX - padding} ${minY - padding} ${width} ${height}" width="${width}" height="${height}">\n`;
+      
+      elements.forEach(el => {
+        if (el.type === 'line') {
+          svgContent += `  <line x1="${el.x1}" y1="${el.y1}" x2="${el.x2}" y2="${el.y2}" stroke="black" stroke-width="${el.strokeWidth || 1.5}" fill="none" />\n`;
+        } else if (el.type === 'rectangle') {
+          svgContent += `  <rect x="${el.x}" y="${el.y}" width="${el.width}" height="${el.height}" stroke="black" stroke-width="${el.strokeWidth || 1.5}" fill="none" />\n`;
         } else if (el.type === 'circle') {
           const rx = el.radiusX || el.radius;
           const ry = el.radiusY || el.radius;
           if (rx === ry) {
-            svgContent += `  <circle cx="${el.cx}" cy="${el.cy}" r="${rx}" fill="none" stroke="${el.stroke || 'black'}" stroke-width="${el.strokeWidth || 1.5}" />\n`;
+            svgContent += `  <circle cx="${el.cx}" cy="${el.cy}" r="${rx}" stroke="black" stroke-width="${el.strokeWidth || 1.5}" fill="none" />\n`;
           } else {
-            svgContent += `  <ellipse cx="${el.cx}" cy="${el.cy}" rx="${rx}" ry="${ry}" fill="none" stroke="${el.stroke || 'black'}" stroke-width="${el.strokeWidth || 1.5}" />\n`;
+            svgContent += `  <ellipse cx="${el.cx}" cy="${el.cy}" rx="${rx}" ry="${ry}" stroke="black" stroke-width="${el.strokeWidth || 1.5}" fill="none" />\n`;
           }
         } else if (el.type === 'arc') {
           const startX = el.cx + el.radius * Math.cos(el.startAngle);
@@ -413,7 +450,7 @@ const CADEditor = () => {
           const endX = el.cx + el.radius * Math.cos(el.endAngle);
           const endY = el.cy + el.radius * Math.sin(el.endAngle);
           const largeArc = (el.endAngle - el.startAngle) > Math.PI ? 1 : 0;
-          svgContent += `  <path d="M ${startX} ${startY} A ${el.radius} ${el.radius} 0 ${largeArc} 1 ${endX} ${endY}" fill="none" stroke="${el.stroke || 'black'}" stroke-width="${el.strokeWidth || 1.5}" />\n`;
+          svgContent += `  <path d="M ${startX} ${startY} A ${el.radius} ${el.radius} 0 ${largeArc} 1 ${endX} ${endY}" stroke="black" stroke-width="${el.strokeWidth || 1.5}" fill="none" />\n`;
         }
       });
       
@@ -427,7 +464,7 @@ const CADEditor = () => {
       a.click();
       URL.revokeObjectURL(url);
     } else if (format === 'dxf') {
-      alert('DXF export will be implemented soon!');
+      alert('L\'export DXF sera bientôt implémenté !');
     }
   }, [elements, currentFileName]);
 

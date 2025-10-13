@@ -33,35 +33,35 @@ const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
           onClick={() => toggleMenu('file')}
           className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
         >
-          File
+          Fichier
         </button>
         
         {openMenu === 'file' && (
           <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg z-50">
             <MenuItem 
-              label="New" 
+              label="Nouveau" 
               shortcut="Ctrl + N"
               onClick={() => handleMenuAction(onNew)}
             />
             <MenuItem 
-              label="Open..." 
+              label="Ouvrir..." 
               shortcut="Ctrl + O"
               onClick={() => handleMenuAction(onOpen)}
             />
             <div className="h-px bg-gray-300 dark:bg-gray-700 my-1" />
             <MenuItem 
-              label="Save" 
+              label="Enregistrer" 
               shortcut="Ctrl + S"
               onClick={() => handleMenuAction(onSave)}
             />
             <MenuItem 
-              label="Save as..." 
+              label="Enregistrer sous..." 
               shortcut="Ctrl + Shift + S"
               onClick={() => handleMenuAction(onSaveAs)}
             />
             <div className="h-px bg-gray-300 dark:bg-gray-700 my-1" />
             <SubMenuItem
-              label="Export Frames to..."
+              label="Exporter en..."
               items={[
                 { label: 'SVG', onClick: () => handleMenuAction(() => onExport('svg')) },
                 { label: 'DXF', onClick: () => handleMenuAction(() => onExport('dxf')) },
@@ -69,7 +69,7 @@ const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
             />
             <div className="h-px bg-gray-300 dark:bg-gray-700 my-1" />
             <MenuItem 
-              label="Close" 
+              label="Fermer" 
               shortcut=""
               onClick={() => handleMenuAction(() => {})}
             />
@@ -82,7 +82,7 @@ const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
           onClick={() => toggleMenu('edit')}
           className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
         >
-          Edit
+          Édition
         </button>
       </div>
 
@@ -91,7 +91,7 @@ const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
           onClick={() => toggleMenu('object')}
           className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
         >
-          Object
+          Objet
         </button>
       </div>
 
@@ -100,7 +100,7 @@ const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
           onClick={() => toggleMenu('select')}
           className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
         >
-          Select
+          Sélection
         </button>
       </div>
 
@@ -109,7 +109,7 @@ const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
           onClick={() => toggleMenu('view')}
           className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
         >
-          View
+          Affichage
         </button>
       </div>
 
@@ -118,7 +118,7 @@ const MenuBar = React.memo(({ onNew, onOpen, onSave, onSaveAs, onExport }) => {
           onClick={() => toggleMenu('help')}
           className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
         >
-          Help
+          Aide
         </button>
       </div>
     </div>
