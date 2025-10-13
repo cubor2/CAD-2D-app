@@ -4,6 +4,7 @@ export const useSelection = () => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [groups, setGroups] = useState([]);
   const [flashingIds, setFlashingIds] = useState([]);
+  const [flashType, setFlashType] = useState('group');
 
   const createGroup = () => {
     if (selectedIds.length < 2) return;
@@ -20,6 +21,7 @@ export const useSelection = () => {
     };
     setGroups(prev => [...prev, newGroup]);
     
+    setFlashType('group');
     setFlashingIds([...selectedIds]);
     setTimeout(() => setFlashingIds([]), 600);
   };
@@ -31,6 +33,7 @@ export const useSelection = () => {
     const allElementIds = groupsToRemove.flatMap(g => g.elementIds);
     setGroups(prev => prev.filter(group => !groupsToRemove.includes(group)));
     
+    setFlashType('ungroup');
     setFlashingIds(allElementIds);
     setTimeout(() => setFlashingIds([]), 600);
   };
@@ -69,6 +72,7 @@ export const useSelection = () => {
     setSelectedIds,
     groups,
     flashingIds,
+    flashType,
     createGroup,
     ungroupSelected,
     getGroupForElement,

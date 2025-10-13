@@ -161,13 +161,14 @@ export const drawOriginCross = (ctx, canvas, viewport, worldX, worldY) => {
   ctx.stroke();
 };
 
-export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, selectedEdge, showDimensions, darkMode, currentElement) => {
+export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement) => {
   ctx.save();
 
   const isFlashing = flashingIds.includes(el.id);
+  const flashColor = flashType === 'ungroup' ? '#ff8800' : '#00ff00';
   
   if (isFlashing) {
-    ctx.strokeStyle = '#00ff00';
+    ctx.strokeStyle = flashColor;
     ctx.lineWidth = 4;
   } else if (isSelected) {
     ctx.strokeStyle = '#00aaff';
@@ -186,7 +187,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     const isArcSelected = selectedEdge && selectedEdge.elementId === el.id && selectedEdge.edge === 'arc';
     
     if (isFlashing) {
-      ctx.strokeStyle = '#00ff00';
+      ctx.strokeStyle = flashColor;
       ctx.lineWidth = 4;
     } else {
       ctx.strokeStyle = isArcSelected ? '#ffff00' : (isSelected ? '#00aaff' : (el.stroke || (darkMode ? '#ffffff' : '#000000')));
@@ -231,7 +232,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     const isLineSelected = selectedEdge && selectedEdge.elementId === el.id && selectedEdge.edge === 'line';
     
     if (isFlashing) {
-      ctx.strokeStyle = '#00ff00';
+      ctx.strokeStyle = flashColor;
       ctx.lineWidth = 4;
     } else {
       ctx.strokeStyle = isLineSelected ? '#ffff00' : (isSelected ? '#00aaff' : (el.stroke || (darkMode ? '#ffffff' : '#000000')));

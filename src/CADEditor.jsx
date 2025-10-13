@@ -66,6 +66,7 @@ const CADEditor = () => {
     setSelectedIds,
     groups,
     flashingIds,
+    flashType,
     createGroup,
     ungroupSelected,
     selectGroup,
@@ -1138,7 +1139,10 @@ const CADEditor = () => {
         onCopy={handleCopy}
         onPaste={handlePaste}
         onDelete={handleDelete}
+        onGroup={createGroup}
+        onUngroup={ungroupSelected}
         hasSelection={selectedIds.length > 0}
+        hasMultipleSelection={selectedIds.length >= 2}
       />
       
       <div className="flex flex-1">
@@ -1177,6 +1181,7 @@ const CADEditor = () => {
             showRulers={showRulers}
             guides={guides}
             flashingIds={flashingIds}
+            flashType={flashType}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}

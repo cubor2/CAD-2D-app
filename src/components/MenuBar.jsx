@@ -12,7 +12,10 @@ const MenuBar = React.memo(({
   onCopy,
   onPaste,
   onDelete,
-  hasSelection
+  onGroup,
+  onUngroup,
+  hasSelection,
+  hasMultipleSelection
 }) => {
   const [openMenu, setOpenMenu] = useState(null);
   const menuRef = useRef(null);
@@ -147,6 +150,23 @@ const MenuBar = React.memo(({
         >
           Objet
         </button>
+        
+        {openMenu === 'object' && (
+          <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg z-50">
+            <MenuItem 
+              label="Grouper" 
+              shortcut="Ctrl + G"
+              onClick={() => handleMenuAction(onGroup)}
+              disabled={!hasMultipleSelection}
+            />
+            <MenuItem 
+              label="Dégrouper" 
+              shortcut="Ctrl + Shift + G"
+              onClick={() => handleMenuAction(onUngroup)}
+              disabled={!hasSelection}
+            />
+          </div>
+        )}
       </div>
 
       <div className="relative ml-2">

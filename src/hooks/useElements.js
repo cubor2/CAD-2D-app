@@ -3,8 +3,8 @@ import { useState, useRef } from 'react';
 export const useElements = () => {
   const nextIdRef = useRef(1);
   const [elements, setElements] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [history, setHistory] = useState([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
 
   const saveToHistory = (newElements) => {
     const newHistory = history.slice(0, historyIndex + 1);

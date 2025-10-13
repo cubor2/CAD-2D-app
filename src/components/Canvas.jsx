@@ -23,6 +23,7 @@ const Canvas = React.memo(({
   showRulers,
   guides,
   flashingIds,
+  flashType,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -51,11 +52,11 @@ const Canvas = React.memo(({
 
     elements.forEach(el => {
       const isSelected = selectedIds.includes(el.id);
-      drawElement(ctx, canvas, viewport, el, isSelected, flashingIds, selectedEdge, showDimensions, darkMode, currentElement);
+      drawElement(ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement);
     });
 
     if (currentElement) {
-      drawElement(ctx, canvas, viewport, currentElement, false, flashingIds, selectedEdge, showDimensions, darkMode, currentElement);
+      drawElement(ctx, canvas, viewport, currentElement, false, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement);
     }
 
     if (drawOrigin) {
@@ -85,7 +86,7 @@ const Canvas = React.memo(({
     ctx.scale(dpr, dpr);
     
     draw();
-  }, [elements, viewport, selectedIds, currentElement, snapPoint, selectionBox, drawOrigin, selectedEdge, showDimensions, darkMode, showRulers, guides, flashingIds]);
+  }, [elements, viewport, selectedIds, currentElement, snapPoint, selectionBox, drawOrigin, selectedEdge, showDimensions, darkMode, showRulers, guides, flashingIds, flashType]);
 
   useEffect(() => {
     const redraw = () => {
