@@ -21,7 +21,19 @@ L'application sera accessible sur **http://localhost:5173**
 npm run build
 ```
 
+## Unités et mesures
+
+**1 unité = 1 millimètre (mm)**
+
+Tous les dessins sont créés en millimètres pour une précision optimale lors de la découpe laser. La grille affiche des intervalles de 1mm avec des lignes majeures tous les 10mm (1cm).
+
 ## Raccourcis clavier
+
+### Fichier
+- **Ctrl/Cmd + N** : Nouveau projet
+- **Ctrl/Cmd + O** : Ouvrir un fichier
+- **Ctrl/Cmd + S** : Enregistrer
+- **Ctrl/Cmd + Shift + S** : Enregistrer sous
 
 ### Outils
 - **S** : Outil de sélection/déplacement
@@ -52,17 +64,42 @@ npm run build
 
 ## Fonctionnalités
 
-- Dessin de lignes, rectangles et cercles
+### Dessin
+- Dessin de lignes, rectangles, cercles et ellipses
 - Édition précise des points de contrôle
 - Snap sur grille (1mm)
 - Snap sur les éléments (points, centres, milieux, arêtes)
 - Règles et guides magnétiques
 - Groupement d'éléments
 - Affichage des dimensions en millimètres
+- Sélection multiple (Shift + Clic ou rectangle de sélection)
+
+### Fichiers
+- Enregistrement/ouverture de projets (format JSON)
+- Export SVG avec dimensions en millimètres
+- Export PNG haute résolution (96 DPI)
+- Export DXF (à venir)
+
+### Interface
 - Mode clair/sombre
 - Historique d'actions (Undo)
 - Copier/coller avec décalage automatique
-- Sélection multiple (Shift + Clic ou rectangle de sélection)
+- Panneau de propriétés dynamique
+
+## Export pour découpe laser
+
+### Format SVG (recommandé)
+L'export SVG utilise des unités en millimètres avec une correspondance 1:1. Les traits sont en noir (stroke-width: 0.3mm) avec un fond transparent, parfait pour l'importation dans des logiciels de découpe laser comme :
+- LightBurn
+- RDWorks
+- LaserGRBL
+- Inkscape
+
+### Format PNG
+L'export PNG génère une image en haute résolution (96 DPI / 3.78 pixels par mm) avec :
+- Fond blanc
+- Traits noirs
+- Dimensions précises pour visualisation et impression
 
 ## Technologies utilisées
 
@@ -70,4 +107,5 @@ npm run build
 - Vite
 - Tailwind CSS
 - Lucide React (icônes)
+- HTML Canvas API
 
