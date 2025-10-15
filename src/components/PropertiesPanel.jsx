@@ -109,17 +109,6 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement }) 
             {selectedElement.type === 'text' && (
               <>
                 <div>
-                  <label className="text-sm text-gray-400">Texte</label>
-                  <textarea 
-                    value={selectedElement.text}
-                    onChange={(e) => {
-                      onUpdateElement(selectedElement.id, { text: e.target.value });
-                    }}
-                    className="w-full bg-gray-700 px-2 py-1 rounded text-sm"
-                    rows={3}
-                  />
-                </div>
-                <div>
                   <label className="text-sm text-gray-400">Police</label>
                   <select
                     value={selectedElement.fontFamily}

@@ -161,7 +161,7 @@ export const drawOriginCross = (ctx, canvas, viewport, worldX, worldY) => {
   ctx.stroke();
 };
 
-export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement) => {
+export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, isEditing, textCursorPosition, textSelectionStart, textSelectionEnd) => {
   ctx.save();
 
   const isFlashing = flashingIds.includes(el.id);
@@ -411,29 +411,113 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     const pos = worldToScreen(el.x, el.y, canvas, viewport);
     
     ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
-    ctx.fillStyle = isFlashing ? flashColor : (isSelected ? '#00aaff' : (el.fill || (darkMode ? '#ffffff' : '#000000')));
     ctx.textBaseline = 'bottom';
-    ctx.fillText(el.text, pos.x, pos.y);
     
-    if (isSelected) {
-      const metrics = ctx.measureText(el.text);
-      const textWidth = metrics.width;
-      const textHeight = el.fontSize;
-      
+    const lines = el.text.split('\n');
+    const lineHeight = el.fontSize * 1.2;
+    
+    // Rendu du texte avec sélection
+    if (isEditing) {
+      // Pendant l'édition, on rend toujours avec la logique de sélection,
+      // même si start === end (pour éviter que tout le texte devienne bleu)
+      const startPos = Math.min(textSelectionStart, textSelectionEnd);
+      const endPos = Math.max(textSelectionStart, textSelectionEnd);
+
+      // Si start === end, on traite ça comme une sélection de longueur 0
+      const hasSelection = startPos !== endPos;
+
+      let currentPos = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const lineStart = currentPos;
+        const lineEnd = currentPos + line.length;
+        const lineY = pos.y - (lines.length - 1 - i) * lineHeight;
+
+        // Si on a une vraie sélection (start !== end), diviser la ligne en parties
+        if (hasSelection) {
+          // Diviser la ligne en 3 parties : avant sélection, sélectionnée, après sélection
+          const selStart = Math.max(startPos, lineStart) - lineStart;
+          const selEnd = Math.min(endPos, lineEnd) - lineStart;
+
+          const textBeforeSel = line.slice(0, Math.max(0, selStart));
+          const selectedText = selStart < selEnd ? line.slice(selStart, selEnd) : '';
+          const textAfterSel = line.slice(Math.max(0, selEnd));
+
+          // Position X de chaque partie
+          let currentX = pos.x;
+          const beforeSelWidth = ctx.measureText(textBeforeSel).width;
+          const selectedWidth = ctx.measureText(selectedText).width;
+
+          // Texte avant la sélection (normal)
+          if (textBeforeSel) {
+            ctx.fillStyle = el.fill || (darkMode ? '#ffffff' : '#000000');
+            ctx.fillText(textBeforeSel, currentX, lineY);
+            currentX += beforeSelWidth;
+          }
+
+          // Texte sélectionné (blanc sur fond bleu)
+          if (selectedText) {
+            const selY = lineY - el.fontSize;
+
+            // Rectangle de sélection
+            ctx.fillStyle = 'rgba(0, 170, 255, 0.3)';
+            ctx.fillRect(currentX, selY, selectedWidth, el.fontSize);
+
+            // Texte sélectionné en blanc
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(selectedText, currentX, lineY);
+            currentX += selectedWidth;
+          }
+
+          // Texte après la sélection (normal)
+          if (textAfterSel) {
+            ctx.fillStyle = el.fill || (darkMode ? '#ffffff' : '#000000');
+            ctx.fillText(textAfterSel, currentX, lineY);
+          }
+        } else {
+          // Pas de sélection : rendre tout le texte normalement (pas en bleu)
+          ctx.fillStyle = el.fill || (darkMode ? '#ffffff' : '#000000');
+          ctx.fillText(line, pos.x, lineY);
+        }
+
+        currentPos += line.length + 1;
+      }
+    } else {
+      // Rendu normal du texte
+      ctx.fillStyle = isFlashing ? flashColor : (isSelected || isEditing ? '#00aaff' : (el.fill || (darkMode ? '#ffffff' : '#000000')));
+      lines.forEach((line, index) => {
+        ctx.fillText(line, pos.x, pos.y - (lines.length - 1 - index) * lineHeight);
+      });
+    }
+
+    // Le curseur sera rendu après le rectangle de sélection
+    
+    // AFFICHAGE DES POIGNÉES DE REDIMENSIONNEMENT POUR LES TEXTES
+    // Un rectangle en pointillés et 8 poignées bleues apparaissent quand le texte est sélectionné ou en édition
+    if (isSelected || isEditing) {
+      const textWidth = Math.max(...lines.map(line => ctx.measureText(line).width));
+      const textHeight = lines.length * lineHeight;
+
+      // Rectangle de sélection en pointillés
       ctx.strokeStyle = '#00aaff';
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 3]);
       ctx.strokeRect(pos.x, pos.y - textHeight, textWidth, textHeight);
       ctx.setLineDash([]);
-      
+
+      // 8 poignées de redimensionnement aux coins et milieux des côtés
       const corners = [
-        { x: pos.x, y: pos.y - textHeight },
-        { x: pos.x + textWidth, y: pos.y - textHeight },
-        { x: pos.x, y: pos.y },
-        { x: pos.x + textWidth, y: pos.y }
+        { x: pos.x, y: pos.y - textHeight },                    // topLeft
+        { x: pos.x + textWidth, y: pos.y - textHeight },       // topRight
+        { x: pos.x, y: pos.y },                                // bottomLeft
+        { x: pos.x + textWidth, y: pos.y },                    // bottomRight
+        { x: pos.x + textWidth / 2, y: pos.y - textHeight },   // top
+        { x: pos.x + textWidth, y: pos.y - textHeight / 2 },   // right
+        { x: pos.x + textWidth / 2, y: pos.y },                // bottom
+        { x: pos.x, y: pos.y - textHeight / 2 }                // left
       ];
-      
-      corners.forEach(pt => {
+
+      corners.forEach((pt, idx) => {
         ctx.fillStyle = '#00aaff';
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
@@ -442,6 +526,53 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         ctx.lineWidth = 1;
         ctx.stroke();
       });
+    }
+    
+    // Rendu du curseur APRÈS le rectangle de sélection pour qu'il soit visible
+    if (isEditing && textCursorPosition !== undefined) {
+      let currentPos = 0;
+      let cursorLine = -1, cursorCol = -1;
+
+      // Trouver la ligne et colonne du curseur
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const lineStart = currentPos;
+        const lineEnd = currentPos + line.length;
+
+        if (textCursorPosition >= lineStart && textCursorPosition <= lineEnd) {
+          cursorLine = i;
+          cursorCol = textCursorPosition - lineStart;
+          break;
+        }
+        currentPos += line.length + 1; // +1 pour le caractère de nouvelle ligne
+      }
+
+      // Si on n'a pas trouvé la ligne, c'est la fin du texte
+      if (cursorLine === -1 && textCursorPosition === el.text.length) {
+        cursorLine = lines.length - 1;
+        cursorCol = lines[cursorLine].length;
+      }
+
+      // Dessiner le curseur
+      if (cursorLine >= 0) {
+        const cursorLineText = lines[cursorLine];
+        const textBeforeCursor = cursorLineText.slice(0, cursorCol);
+        const cursorX = pos.x + ctx.measureText(textBeforeCursor).width;
+        const cursorY = pos.y - (lines.length - 1 - cursorLine) * lineHeight;
+
+        // Clignotement plus fluide avec une fréquence fixe
+        const blinkSpeed = 500; // ms
+        const shouldShow = Math.floor(Date.now() / blinkSpeed) % 2 === 0;
+
+        if (shouldShow) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(cursorX, cursorY - el.fontSize);
+          ctx.lineTo(cursorX, cursorY + 2); // Petit padding en bas
+          ctx.stroke();
+        }
+      }
     }
   }
 

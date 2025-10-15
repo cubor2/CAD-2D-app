@@ -16,6 +16,29 @@ npm run dev
 
 L'application sera accessible sur **http://localhost:5173**
 
+## Fonctionnalités
+
+### Outils disponibles
+- **Sélection et déplacement** : Sélectionner et déplacer tous les éléments (lignes, rectangles, cercles, arcs, textes)
+- **Création de formes** : Lignes, rectangles, cercles, arcs
+- **Texte** : Ajouter et éditer du texte avec mise en forme
+
+### Fonctionnalités des textes
+- **Sélection et déplacement** : Utiliser l'outil de sélection pour déplacer les zones de texte
+- **Édition de contenu** : Double-cliquer ou utiliser l'outil d'édition pour modifier le texte
+- **Redimensionnement** : 8 poignées de redimensionnement (4 coins + 4 milieux de côté)
+- **Navigation au clavier** : Flèches, Home, End, Shift+flèches pour la sélection
+- **Formatage** : Style, poids et taille de police personnalisables
+
+### Raccourcis clavier
+- `Ctrl+Z` / `Cmd+Z` : Annuler
+- `Ctrl+Y` / `Cmd+Y` : Refaire
+- `Ctrl+C` / `Cmd+C` : Copier
+- `Ctrl+V` / `Cmd+V` : Coller
+- `Ctrl+X` / `Cmd+X` : Couper
+- `Suppr` / `Backspace` : Supprimer
+- `Echap` : Désélectionner
+
 ### Build pour la production
 ```bash
 npm run build
@@ -60,6 +83,16 @@ Tous les dessins sont créés en millimètres pour une précision optimale lors 
 - **Ctrl/Cmd + Shift + G** : Dégrouper
 - **Shift + Clic** : Ajouter/retirer de la sélection
 
+### Édition de texte
+- **Double-clic** : Entrer en mode édition de texte (outil "edit" uniquement)
+- **Flèches directionnelles** : Déplacer le curseur
+- **Shift + Flèches** : Sélectionner du texte
+- **Ctrl/Cmd + A** : Sélectionner tout le texte
+- **Home/End** : Aller au début/fin de la ligne
+- **Entrée** : Nouvelle ligne
+- **Backspace/Delete** : Supprimer du texte
+- **Clic dans le texte** : Positionner le curseur
+
 ### Dessin
 - **Shift + Drag** : Contraindre les proportions (cercles, rectangles carrés, lignes à 45°)
 
@@ -67,6 +100,7 @@ Tous les dessins sont créés en millimètres pour une précision optimale lors 
 
 ### Dessin
 - Dessin de lignes, rectangles, cercles et ellipses
+- **Édition de texte avec curseur clignotant**
 - Édition précise des points de contrôle
 - Snap sur grille (1mm)
 - Snap sur les éléments (points, centres, milieux, arêtes)
@@ -117,4 +151,32 @@ L'export PNG génère une image en haute résolution (96 DPI / 3.78 pixels par m
 - Tailwind CSS
 - Lucide React (icônes)
 - HTML Canvas API
+
+## Documentation technique
+
+Pour les développeurs travaillant sur le code :
+
+### 📐 Systèmes de coordonnées
+Comprendre les différents systèmes de coordonnées est **crucial** pour éviter des bugs de positionnement et de redimensionnement.
+
+📚 **[Guide complet des systèmes de coordonnées](docs/COORDINATE_SYSTEMS.md)**
+- Les 4 systèmes de coordonnées (Monde, Canvas, Client, Canvas-Relative)
+- Conversions entre systèmes
+- Différence critique entre Position et Delta/Vecteur
+- Bugs courants et leurs solutions
+- Checklist pour éviter les erreurs
+
+📝 **[Commentaires détaillés du code de redimensionnement](docs/CODE_COMMENTS_TEXT_RESIZE.md)**
+- Explication ligne par ligne des fonctions critiques
+- `getTextControlPointsScreen()` : Calcul des poignées
+- `handleTextResize()` : Algorithme de redimensionnement
+- Détection de clic sur les poignées
+- Pièges à éviter avec exemples
+
+### 🐛 Debugging
+Si vous rencontrez des problèmes avec le positionnement, le redimensionnement ou la détection de clic :
+1. Identifiez le système de coordonnées de vos variables
+2. Vérifiez si vous manipulez une **position** ou un **delta/vecteur**
+3. Consultez la section "Bugs Rencontrés" dans `COORDINATE_SYSTEMS.md`
+4. Utilisez les techniques de debug décrites dans la documentation
 

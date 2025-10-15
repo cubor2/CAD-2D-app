@@ -17,12 +17,21 @@ export const useKeyboardShortcuts = ({
   onSaveAs,
   selectedIds,
   tool,
-  selectedEdge
+  selectedEdge,
+  editingTextId
 }) => {
   const [spacePressed, setSpacePressed] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT') {
+        return;
+      }
+      
+      if (editingTextId) {
+        return;
+      }
+      
       if (e.code === 'Space') {
         e.preventDefault();
         setSpacePressed(true);
@@ -153,6 +162,14 @@ export const useKeyboardShortcuts = ({
     };
 
     const handleKeyUp = (e) => {
+      if (document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT') {
+        return;
+      }
+      
+      if (editingTextId) {
+        return;
+      }
+      
       if (e.code === 'Space') {
         e.preventDefault();
         setSpacePressed(false);
@@ -166,7 +183,7 @@ export const useKeyboardShortcuts = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedIds, tool, selectedEdge, onToolChange, onUndo, onRedo, onCopy, onCut, onPaste, onDelete, onGroup, onUngroup, onMoveElements, onNew, onOpen, onSave, onSaveAs]);
+  }, [selectedIds, tool, selectedEdge, editingTextId, onToolChange, onUndo, onRedo, onCopy, onCut, onPaste, onDelete, onGroup, onUngroup, onMoveElements, onNew, onOpen, onSave, onSaveAs]);
 
   return { spacePressed };
 };

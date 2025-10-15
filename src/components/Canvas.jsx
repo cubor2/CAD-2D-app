@@ -24,6 +24,11 @@ const Canvas = React.memo(({
   guides,
   flashingIds,
   flashType,
+  tool,
+  editingTextId,
+  textCursorPosition,
+  textSelectionStart,
+  textSelectionEnd,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -52,11 +57,12 @@ const Canvas = React.memo(({
 
     elements.forEach(el => {
       const isSelected = selectedIds.includes(el.id);
-      drawElement(ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement);
+      const isEditing = editingTextId === el.id && tool === 'edit';
+      drawElement(ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, isEditing, textCursorPosition, textSelectionStart, textSelectionEnd);
     });
 
     if (currentElement) {
-      drawElement(ctx, canvas, viewport, currentElement, false, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement);
+      drawElement(ctx, canvas, viewport, currentElement, false, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, false);
     }
 
     if (drawOrigin) {
@@ -86,7 +92,7 @@ const Canvas = React.memo(({
     ctx.scale(dpr, dpr);
     
     draw();
-  }, [elements, viewport, selectedIds, currentElement, snapPoint, selectionBox, drawOrigin, selectedEdge, showDimensions, darkMode, showRulers, guides, flashingIds, flashType]);
+  }, [elements, viewport, selectedIds, currentElement, snapPoint, selectionBox, drawOrigin, selectedEdge, showDimensions, darkMode, showRulers, guides, flashingIds, flashType, editingTextId, textCursorPosition, textSelectionStart, textSelectionEnd]);
 
   useEffect(() => {
     const redraw = () => {
@@ -113,6 +119,16 @@ const Canvas = React.memo(({
       clearTimeout(timer3);
     };
   }, []);
+
+  useEffect(() => {
+    if (!editingTextId) return;
+    
+    const interval = setInterval(() => {
+      draw();
+    }, 530);
+    
+    return () => clearInterval(interval);
+  }, [editingTextId, draw]);
 
   return (
     <canvas

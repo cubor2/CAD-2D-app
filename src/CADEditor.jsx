@@ -40,6 +40,12 @@ const CADEditor = () => {
   const [editingPoint, setEditingPoint] = useState(null);
   const [selectedEdge, setSelectedEdge] = useState(null);
   
+  const [editingTextId, setEditingTextId] = useState(null);
+  const [textCursorPosition, setTextCursorPosition] = useState(0);
+  const [textSelectionStart, setTextSelectionStart] = useState(0);
+  const [textSelectionEnd, setTextSelectionEnd] = useState(0);
+  const [isDraggingTextSelection, setIsDraggingTextSelection] = useState(false);
+  
   const [clipboard, setClipboard] = useState([]);
   const [pasteCount, setPasteCount] = useState(0);
   
@@ -87,6 +93,190 @@ const CADEditor = () => {
     const canvas = getCanvasRef().current;
     return canvas ? worldToScreen(worldX, worldY, canvas, viewport) : { x: 0, y: 0 };
   }, [viewport]);
+
+  const getTextCursorPositionFromClick = useCallback((textElement, clickPoint) => {
+    const canvas = getCanvasRef().current;
+    if (!canvas) return 0;
+    if (!textElement.text) return 0;
+    
+    const pos = worldToScreenWrapper(textElement.x, textElement.y);
+    const clickScreen = worldToScreenWrapper(clickPoint.x, clickPoint.y);
+    
+    const ctx = canvas.getContext('2d');
+    ctx.font = `${textElement.fontStyle} ${textElement.fontWeight} ${textElement.fontSize}px ${textElement.fontFamily}`;
+    
+    const lines = textElement.text.split('\n');
+    const lineHeight = textElement.fontSize * 1.2;
+    
+    let closestPos = 0;
+    let minDist = Infinity;
+    let currentPos = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineY = pos.y - (lines.length - 1 - i) * lineHeight;
+      const distToLine = Math.abs(clickScreen.y - lineY);
+      
+      if (distToLine < lineHeight / 2) {
+        for (let j = 0; j <= line.length; j++) {
+          const textBefore = line.slice(0, j);
+          const charX = pos.x + ctx.measureText(textBefore).width;
+          const dist = Math.abs(clickScreen.x - charX);
+          
+          if (dist < minDist) {
+            minDist = dist;
+            closestPos = currentPos + j;
+          }
+        }
+        return closestPos;
+      }
+      
+      currentPos += line.length + 1;
+    }
+    
+    return textElement.text.length;
+  }, [worldToScreenWrapper]);
+
+  const getTextControlPointsScreen = useCallback((textElement) => {
+    const canvas = getCanvasRef().current;
+    if (!canvas) return [];
+    
+    const pos = worldToScreenWrapper(textElement.x, textElement.y);
+    
+    const ctx = canvas.getContext('2d');
+    ctx.font = `${textElement.fontStyle} ${textElement.fontWeight} ${textElement.fontSize}px ${textElement.fontFamily}`;
+    
+    const lines = textElement.text ? textElement.text.split('\n') : [''];
+    const lineHeight = textElement.fontSize * 1.2;
+    const widths = lines.map(line => ctx.measureText(line).width);
+    const textWidth = Math.max(...widths, textElement.fontSize * 3);
+    const textHeight = lines.length * lineHeight;
+    
+    return [
+      { x: pos.x, y: pos.y - textHeight, label: 'topLeft' },
+      { x: pos.x + textWidth, y: pos.y - textHeight, label: 'topRight' },
+      { x: pos.x, y: pos.y, label: 'bottomLeft' },
+      { x: pos.x + textWidth, y: pos.y, label: 'bottomRight' },
+      { x: pos.x + textWidth / 2, y: pos.y - textHeight, label: 'top' },
+      { x: pos.x + textWidth, y: pos.y - textHeight / 2, label: 'right' },
+      { x: pos.x + textWidth / 2, y: pos.y, label: 'bottom' },
+      { x: pos.x, y: pos.y - textHeight / 2, label: 'left' }
+    ];
+  }, [worldToScreenWrapper]);
+
+  const handleTextResize = useCallback((textElement, handle, dx, dy) => {
+    const canvas = getCanvasRef().current;
+    if (!canvas) return textElement;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.font = `${textElement.fontStyle} ${textElement.fontWeight} ${textElement.fontSize}px ${textElement.fontFamily}`;
+    
+    const lines = textElement.text ? textElement.text.split('\n') : [''];
+    const lineHeight = textElement.fontSize * 1.2;
+    const widths = lines.map(line => ctx.measureText(line).width);
+    const oldTextWidthPx = Math.max(...widths, textElement.fontSize * 3);
+    const oldTextHeightPx = lines.length * lineHeight;
+    
+    const oldWidthWorld = oldTextWidthPx / viewport.zoom;
+    const oldHeightWorld = oldTextHeightPx / viewport.zoom;
+    
+    const topLeft = { x: textElement.x, y: textElement.y - oldHeightWorld };
+    const topRight = { x: textElement.x + oldWidthWorld, y: textElement.y - oldHeightWorld };
+    const bottomLeft = { x: textElement.x, y: textElement.y };
+    const bottomRight = { x: textElement.x + oldWidthWorld, y: textElement.y };
+    
+    const dxScreen = dx * viewport.zoom;
+    const dyScreen = dy * viewport.zoom;
+    
+    let scaleX = 1;
+    let scaleY = 1;
+    
+    switch (handle) {
+      case 'topLeft':
+        scaleX = Math.max(0.1, (oldTextWidthPx - dxScreen) / oldTextWidthPx);
+        scaleY = Math.max(0.1, (oldTextHeightPx - dyScreen) / oldTextHeightPx);
+        break;
+      case 'topRight':
+        scaleX = Math.max(0.1, (oldTextWidthPx + dxScreen) / oldTextWidthPx);
+        scaleY = Math.max(0.1, (oldTextHeightPx - dyScreen) / oldTextHeightPx);
+        break;
+      case 'bottomLeft':
+        scaleX = Math.max(0.1, (oldTextWidthPx - dxScreen) / oldTextWidthPx);
+        scaleY = Math.max(0.1, (oldTextHeightPx + dyScreen) / oldTextHeightPx);
+        break;
+      case 'bottomRight':
+        scaleX = Math.max(0.1, (oldTextWidthPx + dxScreen) / oldTextWidthPx);
+        scaleY = Math.max(0.1, (oldTextHeightPx + dyScreen) / oldTextHeightPx);
+        break;
+      case 'top':
+        scaleY = Math.max(0.1, (oldTextHeightPx - dyScreen) / oldTextHeightPx);
+        break;
+      case 'right':
+        scaleX = Math.max(0.1, (oldTextWidthPx + dxScreen) / oldTextWidthPx);
+        break;
+      case 'bottom':
+        scaleY = Math.max(0.1, (oldTextHeightPx + dyScreen) / oldTextHeightPx);
+        break;
+      case 'left':
+        scaleX = Math.max(0.1, (oldTextWidthPx - dxScreen) / oldTextWidthPx);
+        break;
+    }
+    
+    const scale = Math.min(scaleX, scaleY);
+    const newFontSize = Math.max(6, Math.min(200, textElement.fontSize * scale));
+    
+    const newLineHeight = newFontSize * 1.2;
+    const newTextHeightPx = lines.length * newLineHeight;
+    const newTextWidthPx = oldTextWidthPx * (newFontSize / textElement.fontSize);
+    
+    const newWidthWorld = newTextWidthPx / viewport.zoom;
+    const newHeightWorld = newTextHeightPx / viewport.zoom;
+    
+    let newX = textElement.x;
+    let newY = textElement.y;
+    
+    switch (handle) {
+      case 'topLeft':
+        newX = bottomRight.x - newWidthWorld;
+        newY = bottomRight.y;
+        break;
+      case 'topRight':
+        newX = bottomLeft.x;
+        newY = bottomLeft.y;
+        break;
+      case 'bottomLeft':
+        newX = topRight.x - newWidthWorld;
+        newY = topRight.y + newHeightWorld;
+        break;
+      case 'bottomRight':
+        newX = topLeft.x;
+        newY = topLeft.y + newHeightWorld;
+        break;
+      case 'top':
+        newX = textElement.x;
+        newY = bottomLeft.y;
+        break;
+      case 'bottom':
+        newX = textElement.x;
+        newY = topLeft.y + newHeightWorld;
+        break;
+      case 'left':
+        newX = topRight.x - newWidthWorld;
+        newY = textElement.y;
+        break;
+      case 'right':
+        newX = topLeft.x;
+        newY = textElement.y;
+        break;
+    }
+    
+    return {
+      ...textElement,
+      x: newX,
+      y: newY,
+      fontSize: newFontSize
+    };
+  }, [worldToScreenWrapper, viewport]);
 
   const applySnap = (point, excludeIds = []) => {
     let snappedX = point.x;
@@ -560,6 +750,164 @@ const CADEditor = () => {
     setHasUnsavedChanges(true);
   }, [elements]);
 
+  useEffect(() => {
+    if (!editingTextId) return;
+
+    const handleKeyDown = (e) => {
+      const textEl = elements.find(el => el.id === editingTextId);
+      if (!textEl) return;
+
+      if (e.key === 'Escape') {
+        setEditingTextId(null);
+        setTextCursorPosition(0);
+        setTextSelectionStart(0);
+        setTextSelectionEnd(0);
+        e.preventDefault();
+        return;
+      }
+
+      let newText = textEl.text;
+      let newCursorPos = textCursorPosition;
+      const selStart = Math.min(textSelectionStart, textSelectionEnd);
+      const selEnd = Math.max(textSelectionStart, textSelectionEnd);
+      const hasSelection = selStart !== selEnd;
+
+      if (e.key === 'ArrowLeft') {
+        if (e.shiftKey) {
+          setTextCursorPosition(Math.max(0, textCursorPosition - 1));
+          setTextSelectionEnd(Math.max(0, textCursorPosition - 1));
+        } else {
+          const newPos = hasSelection ? selStart : Math.max(0, textCursorPosition - 1);
+          setTextCursorPosition(newPos);
+          setTextSelectionStart(newPos);
+          setTextSelectionEnd(newPos);
+        }
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        if (e.shiftKey) {
+          setTextCursorPosition(Math.min(newText.length, textCursorPosition + 1));
+          setTextSelectionEnd(Math.min(newText.length, textCursorPosition + 1));
+        } else {
+          const newPos = hasSelection ? selEnd : Math.min(newText.length, textCursorPosition + 1);
+          setTextCursorPosition(newPos);
+          setTextSelectionStart(newPos);
+          setTextSelectionEnd(newPos);
+        }
+        e.preventDefault();
+      } else if (e.key === 'Home') {
+        const lines = newText.split('\n');
+        let currentPos = 0;
+        let lineStart = 0;
+        for (let i = 0; i < lines.length; i++) {
+          const lineEnd = currentPos + lines[i].length;
+          if (textCursorPosition >= currentPos && textCursorPosition <= lineEnd) {
+            lineStart = currentPos;
+            break;
+          }
+          currentPos += lines[i].length + 1;
+        }
+        if (e.shiftKey) {
+          setTextCursorPosition(lineStart);
+          setTextSelectionEnd(lineStart);
+        } else {
+          setTextCursorPosition(lineStart);
+          setTextSelectionStart(lineStart);
+          setTextSelectionEnd(lineStart);
+        }
+        e.preventDefault();
+      } else if (e.key === 'End') {
+        const lines = newText.split('\n');
+        let currentPos = 0;
+        let lineEnd = newText.length;
+        for (let i = 0; i < lines.length; i++) {
+          const currentLineEnd = currentPos + lines[i].length;
+          if (textCursorPosition >= currentPos && textCursorPosition <= currentLineEnd) {
+            lineEnd = currentLineEnd;
+            break;
+          }
+          currentPos += lines[i].length + 1;
+        }
+        if (e.shiftKey) {
+          setTextCursorPosition(lineEnd);
+          setTextSelectionEnd(lineEnd);
+        } else {
+          setTextCursorPosition(lineEnd);
+          setTextSelectionStart(lineEnd);
+          setTextSelectionEnd(lineEnd);
+        }
+        e.preventDefault();
+      } else if (e.key === 'Backspace') {
+        if (hasSelection) {
+          newText = newText.slice(0, selStart) + newText.slice(selEnd);
+          newCursorPos = selStart;
+        } else if (textCursorPosition > 0) {
+          newText = newText.slice(0, textCursorPosition - 1) + newText.slice(textCursorPosition);
+          newCursorPos = textCursorPosition - 1;
+        }
+        setElements(prev => prev.map(el => 
+          el.id === editingTextId ? { ...el, text: newText } : el
+        ));
+        setTextCursorPosition(newCursorPos);
+        setTextSelectionStart(newCursorPos);
+        setTextSelectionEnd(newCursorPos);
+        e.preventDefault();
+      } else if (e.key === 'Delete') {
+        if (hasSelection) {
+          newText = newText.slice(0, selStart) + newText.slice(selEnd);
+          newCursorPos = selStart;
+        } else if (textCursorPosition < newText.length) {
+          newText = newText.slice(0, textCursorPosition) + newText.slice(textCursorPosition + 1);
+          newCursorPos = textCursorPosition;
+        }
+        setElements(prev => prev.map(el => 
+          el.id === editingTextId ? { ...el, text: newText } : el
+        ));
+        setTextCursorPosition(newCursorPos);
+        setTextSelectionStart(newCursorPos);
+        setTextSelectionEnd(newCursorPos);
+        e.preventDefault();
+      } else if (e.key === 'Enter') {
+        if (hasSelection) {
+          newText = newText.slice(0, selStart) + '\n' + newText.slice(selEnd);
+          newCursorPos = selStart + 1;
+        } else {
+          newText = newText.slice(0, textCursorPosition) + '\n' + newText.slice(textCursorPosition);
+          newCursorPos = textCursorPosition + 1;
+        }
+        setElements(prev => prev.map(el => 
+          el.id === editingTextId ? { ...el, text: newText } : el
+        ));
+        setTextCursorPosition(newCursorPos);
+        setTextSelectionStart(newCursorPos);
+        setTextSelectionEnd(newCursorPos);
+        e.preventDefault();
+      } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+        setTextCursorPosition(newText.length);
+        setTextSelectionStart(0);
+        setTextSelectionEnd(newText.length);
+        e.preventDefault();
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (hasSelection) {
+          newText = newText.slice(0, selStart) + e.key + newText.slice(selEnd);
+          newCursorPos = selStart + 1;
+        } else {
+          newText = newText.slice(0, textCursorPosition) + e.key + newText.slice(textCursorPosition);
+          newCursorPos = textCursorPosition + 1;
+        }
+        setElements(prev => prev.map(el => 
+          el.id === editingTextId ? { ...el, text: newText } : el
+        ));
+        setTextCursorPosition(newCursorPos);
+        setTextSelectionStart(newCursorPos);
+        setTextSelectionEnd(newCursorPos);
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editingTextId, textCursorPosition, textSelectionStart, textSelectionEnd, elements, setElements]);
+
   const { spacePressed } = useKeyboardShortcuts({
     onToolChange: handleToolChange,
     onUndo: undo,
@@ -577,7 +925,8 @@ const CADEditor = () => {
     onSaveAs: handleSaveAs,
     selectedIds,
     tool,
-    selectedEdge
+    selectedEdge,
+    editingTextId
   });
 
   const cursor = useMemo(() => {
@@ -677,15 +1026,22 @@ const CADEditor = () => {
         } else if (el.type === 'text') {
           const canvas = getCanvasRef().current;
           if (!canvas) return false;
+          
+          const pos = worldToScreenWrapper(el.x, el.y);
+          const clickScreen = worldToScreenWrapper(snapped.x, snapped.y);
+          
           const ctx = canvas.getContext('2d');
           ctx.save();
           ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
-          const metrics = ctx.measureText(el.text);
-          const textWidth = metrics.width / viewport.zoom;
-          const textHeight = el.fontSize / viewport.zoom;
+          const lines = el.text ? el.text.split('\n') : [''];
+          const lineHeight = el.fontSize * 1.2;
+          const widths = lines.map(line => ctx.measureText(line).width);
+          const textWidth = Math.max(...widths, el.fontSize * 3);
+          const textHeight = Math.max(lines.length * lineHeight, el.fontSize);
           ctx.restore();
-          return snapped.x >= el.x && snapped.x <= el.x + textWidth &&
-                 snapped.y - textHeight <= el.y && snapped.y >= el.y;
+          
+          return clickScreen.x >= pos.x && clickScreen.x <= pos.x + textWidth &&
+                 clickScreen.y >= pos.y - textHeight && clickScreen.y <= pos.y;
         }
         return false;
       });
@@ -713,10 +1069,101 @@ const CADEditor = () => {
     if (tool === 'edit') {
       const CLICK_DISTANCE = 8 / viewport.zoom;
       
+      if (editingTextId) {
+        const textEl = elements.find(e => e.id === editingTextId);
+        if (textEl) {
+          const canvas = getCanvasRef().current;
+          if (canvas) {
+            const pos = worldToScreenWrapper(textEl.x, textEl.y);
+            const clickScreen = worldToScreenWrapper(snapped.x, snapped.y);
+            
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.font = `${textEl.fontStyle} ${textEl.fontWeight} ${textEl.fontSize}px ${textEl.fontFamily}`;
+            const lines = textEl.text ? textEl.text.split('\n') : [''];
+            const lineHeight = textEl.fontSize * 1.2;
+            const widths = lines.map(line => ctx.measureText(line).width);
+            const textWidth = Math.max(...widths, textEl.fontSize * 3);
+            const textHeight = Math.max(lines.length * lineHeight, textEl.fontSize);
+            ctx.restore();
+            
+            const isInsideText = clickScreen.x >= pos.x && clickScreen.x <= pos.x + textWidth &&
+                                 clickScreen.y >= pos.y - textHeight && clickScreen.y <= pos.y;
+            
+            if (isInsideText) {
+              const cursorPos = getTextCursorPositionFromClick(textEl, snapped);
+              setTextCursorPosition(cursorPos);
+              setTextSelectionStart(cursorPos);
+              setTextSelectionEnd(cursorPos);
+              setIsDraggingTextSelection(true);
+              return;
+            } else {
+              setEditingTextId(null);
+              setTextCursorPosition(0);
+              setTextSelectionStart(0);
+              setTextSelectionEnd(0);
+            }
+          }
+        }
+      }
+      
       for (const el of elements.filter(e => selectedIds.includes(e.id))) {
         let controlPoints = [];
         
-        if (el.type === 'line') {
+        if (el.type === 'text') {
+          if (!editingTextId || editingTextId !== el.id) {
+            const handlePointsScreen = getTextControlPointsScreen(el);
+            const canvas = getCanvasRef().current;
+            if (!canvas) continue;
+            const rect = canvas.getBoundingClientRect();
+            const clickScreenX = e.clientX - rect.left;
+            const clickScreenY = e.clientY - rect.top;
+            
+            for (const cp of handlePointsScreen) {
+              const dist = Math.sqrt((cp.x - clickScreenX) ** 2 + (cp.y - clickScreenY) ** 2);
+              
+              if (dist < 12) {
+                const handleWorld = screenToWorldWrapper(cp.x + rect.left, cp.y + rect.top);
+                setEditingPoint({
+                  elementId: el.id,
+                  pointType: cp.label,
+                  originalElement: JSON.parse(JSON.stringify(el)),
+                  startPoint: handleWorld
+                });
+                setDragStart(handleWorld);
+                return;
+              }
+            }
+          }
+          
+          const canvas = getCanvasRef().current;
+          if (canvas) {
+            const pos = worldToScreenWrapper(el.x, el.y);
+            const clickScreen = worldToScreenWrapper(snapped.x, snapped.y);
+            
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
+            const lines = el.text ? el.text.split('\n') : [''];
+            const lineHeight = el.fontSize * 1.2;
+            const widths = lines.map(line => ctx.measureText(line).width);
+            const textWidth = Math.max(...widths, el.fontSize * 3);
+            const textHeight = Math.max(lines.length * lineHeight, el.fontSize);
+            ctx.restore();
+            
+            const isInsideText = clickScreen.x >= pos.x && clickScreen.x <= pos.x + textWidth &&
+                                 clickScreen.y >= pos.y - textHeight && clickScreen.y <= pos.y;
+            
+            if (isInsideText) {
+              setEditingTextId(el.id);
+              const cursorPos = getTextCursorPositionFromClick(el, snapped);
+              setTextCursorPosition(cursorPos);
+              setTextSelectionStart(cursorPos);
+              setTextSelectionEnd(cursorPos);
+              return;
+            }
+          }
+        } else if (el.type === 'line') {
           controlPoints = [
             { x: el.x1, y: el.y1, label: 'start' },
             { x: el.x2, y: el.y2, label: 'end' }
@@ -788,6 +1235,25 @@ const CADEditor = () => {
           
           const clickAngle = Math.atan2(dy, dx);
           return isAngleBetween(clickAngle, el.startAngle, el.endAngle);
+        } else if (el.type === 'text') {
+          const canvas = getCanvasRef().current;
+          if (!canvas) return false;
+          
+          const pos = worldToScreenWrapper(el.x, el.y);
+          const clickScreen = worldToScreenWrapper(snapped.x, snapped.y);
+          
+          const ctx = canvas.getContext('2d');
+          ctx.save();
+          ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
+          const lines = el.text ? el.text.split('\n') : [''];
+          const lineHeight = el.fontSize * 1.2;
+          const widths = lines.map(line => ctx.measureText(line).width);
+          const textWidth = Math.max(...widths, el.fontSize * 3);
+          const textHeight = Math.max(lines.length * lineHeight, el.fontSize);
+          ctx.restore();
+          
+          return clickScreen.x >= pos.x && clickScreen.x <= pos.x + textWidth &&
+                 clickScreen.y >= pos.y - textHeight && clickScreen.y <= pos.y;
         }
         return false;
       });
@@ -797,11 +1263,21 @@ const CADEditor = () => {
           toggleSelection(clicked.id);
         } else if (!selectedIds.includes(clicked.id)) {
           setSelectedIds([clicked.id]);
+          if (clicked.type === 'text') {
+            setEditingTextId(null);
+            setTextCursorPosition(0);
+            setTextSelectionStart(0);
+            setTextSelectionEnd(0);
+          }
         }
       } else {
         if (!e.shiftKey) {
           clearSelection();
           setSelectedEdge(null);
+          setEditingTextId(null);
+          setTextCursorPosition(0);
+          setTextSelectionStart(0);
+          setTextSelectionEnd(0);
         }
       }
       return;
@@ -822,6 +1298,10 @@ const CADEditor = () => {
       };
       updateElements([...elements, newText]);
       setSelectedIds([newText.id]);
+      setEditingTextId(newText.id);
+      setTextCursorPosition(newText.text.length);
+      setTextSelectionStart(0);
+      setTextSelectionEnd(newText.text.length);
       return;
     }
 
@@ -833,7 +1313,7 @@ const CADEditor = () => {
       type: tool,
       ...snapped
     });
-  }, [showRulers, guides, worldToScreenWrapper, spacePressed, startPan, tool, elements, viewport, selectedIds, toggleSelection, selectGroup, setSelectedIds, clearSelection, getNextId, applySnap, screenToWorldWrapper, pointToLineDistance, isAngleBetween, setSelectedEdge, setEditingPoint, darkMode, updateElements]);
+  }, [showRulers, guides, worldToScreenWrapper, spacePressed, startPan, tool, elements, viewport, selectedIds, toggleSelection, selectGroup, setSelectedIds, clearSelection, getNextId, applySnap, screenToWorldWrapper, pointToLineDistance, isAngleBetween, setSelectedEdge, setEditingPoint, darkMode, updateElements, getTextControlPointsScreen, editingTextId, getTextCursorPositionFromClick, setEditingTextId, setTextCursorPosition, setTextSelectionStart, setTextSelectionEnd, setIsDraggingTextSelection, setTool, setDragStart]);
 
   const handleMouseMove = useCallback((e) => {
     const canvas = getCanvasRef().current;
@@ -870,11 +1350,28 @@ const CADEditor = () => {
 
     const snapped = applySnap(point, []);
 
+    if (tool === 'edit' && isDraggingTextSelection && editingTextId) {
+      const textEl = elements.find(e => e.id === editingTextId);
+      if (textEl) {
+        const cursorPos = getTextCursorPositionFromClick(textEl, snapped);
+        setTextCursorPosition(cursorPos);
+        setTextSelectionEnd(cursorPos);
+      }
+      return;
+    }
+
     if (tool === 'edit' && editingPoint && dragStart) {
       const el = elements.find(e => e.id === editingPoint.elementId);
       if (!el) return;
 
-      if (el.type === 'line') {
+      if (el.type === 'text') {
+        const dx = snapped.x - dragStart.x;
+        const dy = snapped.y - dragStart.y;
+        const resizedText = handleTextResize(editingPoint.originalElement, editingPoint.pointType, dx, dy);
+        setElements(prev => prev.map(item =>
+          item.id === el.id ? resizedText : item
+        ));
+      } else if (el.type === 'line') {
         if (editingPoint.pointType === 'start') {
           let newX = snapped.x;
           let newY = snapped.y;
@@ -1092,7 +1589,7 @@ const CADEditor = () => {
         }
       }
     }
-  }, [isDraggingGuide, guides, elements, viewport, setGuides, setSnapPoint, isPanning, handlePan, tool, dragStart, selectedIds, isDraggingElements, snapToElements, showRulers, setElements, selectionBox, isDrawing, startPoint, currentElement, screenToWorldWrapper, applySnap, editingPoint]);
+  }, [isDraggingGuide, guides, elements, viewport, setGuides, setSnapPoint, isPanning, handlePan, tool, dragStart, selectedIds, isDraggingElements, snapToElements, showRulers, setElements, selectionBox, isDrawing, startPoint, currentElement, screenToWorldWrapper, applySnap, editingPoint, editingTextId, isDraggingTextSelection, handleTextResize, getTextCursorPositionFromClick, setTextCursorPosition, setTextSelectionEnd, worldToScreenWrapper, setIsDraggingTextSelection]);
 
   const handleMouseUp = useCallback(() => {
     if (isDraggingGuide) {
@@ -1128,6 +1625,11 @@ const CADEditor = () => {
     if (editingPoint) {
       setEditingPoint(null);
       setDragStart(null);
+      return;
+    }
+
+    if (isDraggingTextSelection) {
+      setIsDraggingTextSelection(false);
       return;
     }
 
@@ -1178,7 +1680,7 @@ const CADEditor = () => {
 
     setDragStart(null);
     setIsDraggingElements(false);
-  }, [isDraggingGuide, showRulers, guides, worldToScreenWrapper, setGuides, setSnapPoint, isPanning, endPan, editingPoint, setEditingPoint, selectionBox, dragStart, elements, setSelectedIds, isDrawing, currentElement, updateElements]);
+  }, [isDraggingGuide, showRulers, guides, worldToScreenWrapper, setGuides, setSnapPoint, isPanning, endPan, editingPoint, setEditingPoint, selectionBox, dragStart, elements, setSelectedIds, isDrawing, currentElement, updateElements, isDraggingTextSelection, setIsDraggingTextSelection]);
 
   const handleWheel = useCallback((e) => {
     if (e.shiftKey) {
@@ -1245,6 +1747,11 @@ const CADEditor = () => {
             guides={guides}
             flashingIds={flashingIds}
             flashType={flashType}
+            tool={tool}
+            editingTextId={editingTextId}
+            textCursorPosition={textCursorPosition}
+            textSelectionStart={textSelectionStart}
+            textSelectionEnd={textSelectionEnd}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
