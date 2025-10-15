@@ -83,3 +83,4 @@ Les différentes tentatives sont disponibles dans les commits :
 
 Le bug semble être lié à la façon dont les points de contrôle sont calculés et détectés plutôt qu'à la logique de redimensionnement elle-même. Une approche plus simple, focalisée sur la détection des clics, pourrait être plus fructueuse.
 
+

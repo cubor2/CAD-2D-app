@@ -614,3 +614,79 @@ export const drawSelectionBox = (ctx, selectionBox) => {
   ctx.setLineDash([]);
 };
 
+export const drawWorkArea = (ctx, canvas, viewport, workArea) => {
+  if (!workArea || !workArea.visible || workArea.width <= 0 || workArea.height <= 0) return;
+  
+  // La zone de travail est centrée sur l'origine (0, 0)
+  // Elle s'étend de (-width/2, -height/2) à (width/2, height/2)
+  const halfWidth = workArea.width / 2;
+  const halfHeight = workArea.height / 2;
+  
+  // Convertir les coins en coordonnées écran
+  const topLeft = worldToScreen(-halfWidth, -halfHeight, canvas, viewport);
+  const bottomRight = worldToScreen(halfWidth, halfHeight, canvas, viewport);
+  
+  const screenWidth = bottomRight.x - topLeft.x;
+  const screenHeight = bottomRight.y - topLeft.y;
+  
+  // Dessiner le rectangle de la zone de travail
+  ctx.strokeStyle = '#ff9900';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([10, 5]);
+  ctx.strokeRect(topLeft.x, topLeft.y, screenWidth, screenHeight);
+  ctx.setLineDash([]);
+  
+  // Ajouter une ombre légère pour indiquer la zone hors limites
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+  const rect = canvas.getBoundingClientRect();
+  
+  // Ombre en haut
+  if (topLeft.y > 0) {
+    ctx.fillRect(0, 0, rect.width, topLeft.y);
+  }
+  
+  // Ombre à gauche
+  if (topLeft.x > 0) {
+    ctx.fillRect(0, Math.max(0, topLeft.y), topLeft.x, screenHeight);
+  }
+  
+  // Ombre à droite
+  if (bottomRight.x < rect.width) {
+    ctx.fillRect(bottomRight.x, Math.max(0, topLeft.y), rect.width - bottomRight.x, screenHeight);
+  }
+  
+  // Ombre en bas
+  if (bottomRight.y < rect.height) {
+    ctx.fillRect(0, bottomRight.y, rect.width, rect.height - bottomRight.y);
+  }
+  
+  // Ajouter un label "Zone de travail"
+  ctx.save();
+  ctx.font = 'bold 14px Arial';
+  ctx.fillStyle = '#ff9900';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  
+  const centerX = (topLeft.x + bottomRight.x) / 2;
+  const labelY = topLeft.y - 5;
+  
+  // Fond semi-transparent pour le texte
+  const labelText = `Zone de travail: ${workArea.width} × ${workArea.height} mm`;
+  const textMetrics = ctx.measureText(labelText);
+  const padding = 8;
+  
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(
+    centerX - textMetrics.width / 2 - padding,
+    labelY - 16,
+    textMetrics.width + padding * 2,
+    20
+  );
+  
+  // Texte
+  ctx.fillStyle = '#ff9900';
+  ctx.fillText(labelText, centerX, labelY);
+  
+  ctx.restore();
+};
+

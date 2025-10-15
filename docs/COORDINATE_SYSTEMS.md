@@ -408,3 +408,4 @@ console.log('Rect:', rect);
 **Date de dernière mise à jour**: 2025-10-15  
 **Auteur**: Documentation générée suite au debugging intensif du système de redimensionnement de texte
 
+

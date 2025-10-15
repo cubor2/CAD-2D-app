@@ -6,7 +6,8 @@ import {
   drawOriginCross, 
   drawElement, 
   drawSnapPoint, 
-  drawSelectionBox 
+  drawSelectionBox,
+  drawWorkArea
 } from '../utils/drawing';
 
 const Canvas = React.memo(({
@@ -29,6 +30,7 @@ const Canvas = React.memo(({
   textCursorPosition,
   textSelectionStart,
   textSelectionEnd,
+  workArea,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -50,6 +52,9 @@ const Canvas = React.memo(({
 
     ctx.save();
     drawGrid(ctx, canvas, viewport, darkMode, showRulers);
+    
+    // Dessiner la zone de travail avant les éléments
+    drawWorkArea(ctx, canvas, viewport, workArea);
 
     if (showRulers) {
       drawGuides(ctx, canvas, viewport, guides, showRulers);
@@ -92,7 +97,7 @@ const Canvas = React.memo(({
     ctx.scale(dpr, dpr);
     
     draw();
-  }, [elements, viewport, selectedIds, currentElement, snapPoint, selectionBox, drawOrigin, selectedEdge, showDimensions, darkMode, showRulers, guides, flashingIds, flashType, editingTextId, textCursorPosition, textSelectionStart, textSelectionEnd]);
+  }, [elements, viewport, selectedIds, currentElement, snapPoint, selectionBox, drawOrigin, selectedEdge, showDimensions, darkMode, showRulers, guides, flashingIds, flashType, editingTextId, textCursorPosition, textSelectionStart, textSelectionEnd, workArea]);
 
   useEffect(() => {
     const redraw = () => {

@@ -1,11 +1,59 @@
 import React from 'react';
 import { Bold, Italic } from 'lucide-react';
 
-const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement }) => {
+const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, workArea, onWorkAreaChange }) => {
+  // Bloc "Zone de travail" (toujours visible)
+  const WorkAreaSection = () => (
+    <div className="mb-6 pb-4 border-b border-gray-700">
+      <h4 className="text-sm font-semibold mb-3 text-blue-400">Zone de travail</h4>
+      <div className="space-y-3">
+        <div>
+          <label className="text-sm text-gray-400">Largeur (mm)</label>
+          <input 
+            type="number"
+            value={workArea.width}
+            onChange={(e) => {
+              const newWidth = parseFloat(e.target.value) || 0;
+              onWorkAreaChange({ ...workArea, width: newWidth });
+            }}
+            className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+            min="0"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-gray-400">Hauteur (mm)</label>
+          <input 
+            type="number"
+            value={workArea.height}
+            onChange={(e) => {
+              const newHeight = parseFloat(e.target.value) || 0;
+              onWorkAreaChange({ ...workArea, height: newHeight });
+            }}
+            className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+            min="0"
+          />
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <input 
+            type="checkbox"
+            id="showWorkArea"
+            checked={workArea.visible}
+            onChange={(e) => {
+              onWorkAreaChange({ ...workArea, visible: e.target.checked });
+            }}
+            className="rounded"
+          />
+          <label htmlFor="showWorkArea" className="text-sm text-gray-400">Afficher la zone</label>
+        </div>
+      </div>
+    </div>
+  );
+  
   if (selectedIds.length === 0) {
     return (
       <div className="w-64 bg-gray-800 p-4 overflow-y-auto">
         <h3 className="text-lg font-bold mb-4">Proprietes</h3>
+        <WorkAreaSection />
         <p className="text-sm text-gray-500">Aucun element selectionne</p>
       </div>
     );
@@ -18,6 +66,8 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement }) 
   return (
     <div className="w-64 bg-gray-800 p-4 overflow-y-auto">
       <h3 className="text-lg font-bold mb-4">Proprietes</h3>
+      
+      <WorkAreaSection />
       
       <div className="space-y-4">
         <div>

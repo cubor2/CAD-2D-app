@@ -352,3 +352,4 @@ setDragStart(handleWorld);
 // Pas de saut car dx et dy seront calculés depuis la vraie position de la poignée
 ```
 
+

@@ -59,6 +59,13 @@ const CADEditor = () => {
   const [lastClickTime, setLastClickTime] = useState(0);
   const [lastClickedId, setLastClickedId] = useState(null);
   
+  // État pour la zone de travail (délimite la zone de découpe disponible)
+  const [workArea, setWorkArea] = useState({
+    width: 300,
+    height: 300,
+    visible: true
+  });
+  
   const { viewport, isPanning, handlePan, handleZoom, startPan, endPan } = useViewport();
   
   const {
@@ -2031,6 +2038,7 @@ const CADEditor = () => {
             textCursorPosition={textCursorPosition}
             textSelectionStart={textSelectionStart}
             textSelectionEnd={textSelectionEnd}
+            workArea={workArea}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -2053,6 +2061,8 @@ const CADEditor = () => {
           selectedIds={selectedIds}
           elements={elements}
           onUpdateElement={updateElement}
+          workArea={workArea}
+          onWorkAreaChange={setWorkArea}
         />
       </div>
     </div>

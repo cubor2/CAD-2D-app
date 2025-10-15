@@ -2,7 +2,13 @@
 
 Application de dessin CAD 2D pour créer des objets destinés à la découpe laser.
 
-## Démarrage rapide
+## 🌐 Application en ligne
+
+**Accédez directement à l'application :** [https://cad-2d-app.netlify.app/](https://cad-2d-app.netlify.app/)
+
+Aucune installation requise ! L'application est hébergée gratuitement sur Netlify et se met à jour automatiquement à chaque modification du code.
+
+## Démarrage rapide (développement local)
 
 ### Installation des dépendances
 ```bash
@@ -118,6 +124,15 @@ Tous les dessins sont créés en millimètres pour une précision optimale lors 
 - Groupement d'éléments
 - Affichage des dimensions en millimètres
 - Sélection multiple (Shift + Clic ou rectangle de sélection)
+
+### Zone de travail
+- **Configuration de la taille de découpe** : Définissez les dimensions de votre machine (largeur × hauteur en mm)
+- **Rectangle de délimitation visuel** : Affichage d'un rectangle orange centré sur l'origine (0,0)
+- **Zones hors limites** : Zones extérieures légèrement assombries pour indiquer les dépassements
+- **Label dynamique** : Affiche en temps réel les dimensions configurées
+- **Affichage désactivable** : Case à cocher pour masquer/afficher la zone
+- **Panneau de propriétés** : Toujours accessible, même sans élément sélectionné
+- **Valeurs par défaut** : 300 × 300 mm (personnalisable selon votre machine)
 
 ### Fichiers
 - Enregistrement/ouverture de projets (format JSON)

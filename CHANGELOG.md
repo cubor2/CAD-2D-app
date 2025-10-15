@@ -8,6 +8,14 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 ## [Non publié] - 2025-10-15
 
 ### Ajouté
+- **Zone de travail configurable** :
+  - Nouveau panneau dans les propriétés pour définir les dimensions de la zone de découpe (largeur × hauteur en mm)
+  - Rectangle de délimitation visuel orange centré sur l'origine (0,0)
+  - Zones hors limites légèrement assombries pour indiquer les dépassements
+  - Label dynamique affichant les dimensions configurées
+  - Option d'affichage/masquage de la zone via checkbox
+  - Valeurs par défaut : 300 × 300 mm
+  - Panneau toujours accessible même sans élément sélectionné
 - **Double-clic pour passer en mode édition** : En mode sélection, double-cliquer sur un élément passe automatiquement en mode édition
 - **Échap pour retourner en sélection** : En mode édition, la touche Échap retourne automatiquement en mode sélection
 - **Touche Tab pour basculer** : La touche Tab permet de basculer entre les modes sélection et édition
@@ -36,6 +44,12 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 - Création de `CHANGELOG.md` : Suivi des modifications du projet
 - Documentation des bonnes pratiques de versioning
 - Explications sur les messages de commit et le workflow Git
+
+### Infrastructure
+- **Déploiement automatique sur Netlify** : L'application est accessible en ligne à https://cad-2d-app.netlify.app/
+- Configuration `netlify.toml` pour le build automatique
+- Déploiement automatique à chaque push sur GitHub
+- Hébergement gratuit avec HTTPS
 
 ## [0.1.0] - 2025-10-XX
 
