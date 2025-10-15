@@ -7,3 +7,16 @@ dist
 .vscode
 .idea
 
+# Fichiers temporaires et backups
+*.backup
+*.backup.*
+*.temp
+*.temp.*
+*_old.*
+*_new.*
+*.bak
+
+# Dossiers temporaires
+temp/
+tmp/
+backup/

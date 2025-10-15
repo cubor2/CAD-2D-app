@@ -38,6 +38,24 @@ export const useKeyboardShortcuts = ({
         return;
       }
       
+      if (e.key === 'Escape') {
+        if (tool === 'edit') {
+          e.preventDefault();
+          onToolChange('select');
+          return;
+        }
+      }
+      
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        if (tool === 'select') {
+          onToolChange('edit');
+        } else if (tool === 'edit') {
+          onToolChange('select');
+        }
+        return;
+      }
+      
       if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
         if (e.key === 's' || e.key === 'S') {
           onToolChange('select');

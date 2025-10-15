@@ -61,9 +61,11 @@ Tous les dessins sont créés en millimètres pour une précision optimale lors 
 ### Outils
 - **S** : Outil de sélection/déplacement
 - **E** : Outil d'édition
+- **Tab** : Basculer entre sélection et édition
 - **L** : Outil ligne
 - **R** : Outil rectangle
 - **C** : Outil cercle
+- **T** : Outil texte
 
 ### Navigation
 - **Espace + Clic gauche** : Déplacer la vue (pan)
@@ -94,7 +96,15 @@ Tous les dessins sont créés en millimètres pour une précision optimale lors 
 - **Clic dans le texte** : Positionner le curseur
 
 ### Dessin
-- **Shift + Drag** : Contraindre les proportions (cercles, rectangles carrés, lignes à 45°)
+- **Shift pendant la création** : Contraindre les proportions (cercles, rectangles carrés, lignes à 45°)
+- **Shift pendant l'édition** : Maintenir le ratio d'aspect original (rectangles, ellipses)
+
+### Mode Édition avancé
+- **Double-clic** (en mode sélection) : Passe automatiquement en mode édition
+- **Échap** (en mode édition) : Retourne en mode sélection
+- **Clic sur une arête** : Sélectionne l'arête (rectangle/cercle)
+- **Double-clic sur une arête** : Permet de la déplacer ou supprimer
+- **Delete** sur une arête : Supprime l'arête et crée des lignes/arcs
 
 ## Fonctionnalités
 
@@ -151,6 +161,43 @@ L'export PNG génère une image en haute résolution (96 DPI / 3.78 pixels par m
 - Tailwind CSS
 - Lucide React (icônes)
 - HTML Canvas API
+
+## Structure du projet
+
+Le projet suit une architecture modulaire React recommandée :
+
+```
+src/
+├── components/        # Composants React réutilisables
+│   ├── Canvas.jsx       # Composant de rendu Canvas
+│   ├── Toolbar.jsx      # Barre d'outils
+│   ├── MenuBar.jsx      # Menu principal
+│   ├── PropertiesPanel.jsx  # Panneau des propriétés
+│   └── ...
+├── hooks/            # Hooks React personnalisés
+│   ├── useViewport.js   # Gestion du viewport (zoom, pan)
+│   ├── useElements.js   # Gestion des éléments (undo/redo)
+│   ├── useSelection.js  # Gestion de la sélection
+│   └── useKeyboardShortcuts.js  # Raccourcis clavier
+├── utils/            # Fonctions utilitaires pures
+│   ├── transforms.js    # Conversions de coordonnées
+│   ├── geometry.js      # Calculs géométriques
+│   ├── drawing.js       # Fonctions de rendu Canvas
+│   ├── snap.js          # Système de snapping
+│   └── ...
+├── constants/        # Constantes globales
+│   └── index.js
+├── handlers/         # Gestionnaires d'événements complexes
+└── CADEditor.jsx     # Composant principal
+```
+
+### Principes d'architecture
+
+✅ **Séparation des responsabilités** : Chaque fichier a un rôle précis  
+✅ **Composants réutilisables** : Les composants UI sont isolés  
+✅ **Logique métier externalisée** : Les hooks contiennent la logique  
+✅ **Fonctions pures** : Les utils sont testables et prévisibles  
+✅ **Pas de duplication** : Le code commun est mutualisé
 
 ## Documentation technique
 

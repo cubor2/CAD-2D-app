@@ -92,18 +92,54 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement }) 
             )}
             
             {selectedElement.type === 'circle' && (
-              <div>
-                <label className="text-sm text-gray-400">Diametre</label>
-                <input 
-                  type="number"
-                  value={(selectedElement.radius * 2).toFixed(2)}
-                  onChange={(e) => {
-                    const newRadius = (parseFloat(e.target.value) || 0) / 2;
-                    onUpdateElement(selectedElement.id, { radius: newRadius });
-                  }}
-                  className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
-                />
-              </div>
+              <>
+                {selectedElement.radiusX && selectedElement.radiusY && 
+                 Math.abs(selectedElement.radiusX - selectedElement.radiusY) > 0.01 ? (
+                  <>
+                    <div>
+                      <label className="text-sm text-gray-400">Largeur (L)</label>
+                      <input 
+                        type="number"
+                        value={(selectedElement.radiusX * 2).toFixed(2)}
+                        onChange={(e) => {
+                          const newRadiusX = (parseFloat(e.target.value) || 0) / 2;
+                          onUpdateElement(selectedElement.id, { radiusX: newRadiusX });
+                        }}
+                        className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Hauteur (H)</label>
+                      <input 
+                        type="number"
+                        value={(selectedElement.radiusY * 2).toFixed(2)}
+                        onChange={(e) => {
+                          const newRadiusY = (parseFloat(e.target.value) || 0) / 2;
+                          onUpdateElement(selectedElement.id, { radiusY: newRadiusY });
+                        }}
+                        className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className="text-sm text-gray-400">Diametre (D)</label>
+                    <input 
+                      type="number"
+                      value={((selectedElement.radiusX || selectedElement.radius) * 2).toFixed(2)}
+                      onChange={(e) => {
+                        const newRadius = (parseFloat(e.target.value) || 0) / 2;
+                        onUpdateElement(selectedElement.id, { 
+                          radius: newRadius,
+                          radiusX: newRadius,
+                          radiusY: newRadius
+                        });
+                      }}
+                      className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+                    />
+                  </div>
+                )}
+              </>
             )}
             
             {selectedElement.type === 'text' && (
