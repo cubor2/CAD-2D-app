@@ -62,7 +62,9 @@ const Canvas = React.memo(({
     
     // Dessiner les règles (au-dessus de la zone de travail, en dessous du rectangle noir)
     if (showRulers) {
+      ctx.save();
       drawRulers(ctx, canvas, viewport, darkMode, showRulers, borderWidth);
+      ctx.restore();
     }
     
     // Dessiner les grosses bordures noires avec fillRect pour une épaisseur fixe (sans le bas)
@@ -102,7 +104,9 @@ const Canvas = React.memo(({
     ctx.stroke();
 
     if (showRulers) {
+      ctx.save();
       drawGuides(ctx, canvas, viewport, guides, showRulers, borderWidth);
+      ctx.restore();
     }
 
     elements.forEach(el => {
