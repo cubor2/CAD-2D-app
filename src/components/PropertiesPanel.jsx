@@ -51,13 +51,15 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
   if (selectedIds.length === 0) {
     return (
       <div className="w-64 bg-drawhard-panel border-l-2 border-drawhard-dark flex flex-col overflow-y-auto">
-        <div className="bg-drawhard-accent px-6 py-8 flex flex-col items-center justify-center border-b-2 border-drawhard-dark">
-          <img 
-            src="/laserlair-logo.png" 
-            alt="LaserLair" 
-            style={{ width: '180px', height: 'auto', filter: 'brightness(0) invert(1)' }} 
-          />
-          <p className="text-white text-xs mt-2 font-bold tracking-wide">VERSION 1.0</p>
+        <div className="bg-drawhard-accent px-6 py-6 border-b-2 border-drawhard-dark relative">
+          <div className="flex items-center justify-center">
+            <img 
+              src="/laserlair-logo.png" 
+              alt="LaserLair" 
+              style={{ width: '180px', height: 'auto', filter: 'brightness(0) invert(1)' }} 
+            />
+          </div>
+          <p className="text-white text-xs absolute bottom-2 left-2">Version 1.0</p>
       </div>
       <div className="flex-1">
         <WorkAreaSection />
@@ -75,13 +77,15 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
 
   return (
     <div className="w-64 bg-drawhard-panel border-l-2 border-drawhard-dark flex flex-col overflow-y-auto">
-      <div className="bg-drawhard-accent px-6 py-8 flex flex-col items-center justify-center border-b-2 border-drawhard-dark">
-        <img 
-          src="/laserlair-logo.png" 
-          alt="LaserLair" 
-          style={{ width: '180px', height: 'auto', filter: 'brightness(0) invert(1)' }} 
-        />
-        <p className="text-white text-xs mt-2 font-bold tracking-wide">VERSION 1.0</p>
+      <div className="bg-drawhard-accent px-6 py-6 border-b-2 border-drawhard-dark relative">
+        <div className="flex items-center justify-center">
+          <img 
+            src="/laserlair-logo.png" 
+            alt="LaserLair" 
+            style={{ width: '180px', height: 'auto', filter: 'brightness(0) invert(1)' }} 
+          />
+        </div>
+        <p className="text-white text-xs absolute bottom-2 left-2">Version 1.0</p>
       </div>
       <div className="flex-1">
         <WorkAreaSection />

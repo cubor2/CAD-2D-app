@@ -226,6 +226,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         worldToScreen(el.cx, el.cy, canvas, viewport)
       ];
       
+      ctx.save();
       controlPoints.forEach((pt, idx) => {
         ctx.fillStyle = idx === 2 ? '#E44A33' : '#2B2B2B';
         ctx.beginPath();
@@ -235,6 +236,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         ctx.lineWidth = 2;
         ctx.stroke();
       });
+      ctx.restore();
     }
   } else if (el.type === 'line') {
     const start = worldToScreen(el.x1, el.y1, canvas, viewport);
@@ -271,6 +273,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         worldToScreen((el.x1 + el.x2) / 2, (el.y1 + el.y2) / 2, canvas, viewport)
       ];
       
+      ctx.save();
       controlPoints.forEach(pt => {
         ctx.fillStyle = '#2B2B2B';
         ctx.beginPath();
@@ -280,6 +283,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         ctx.lineWidth = 2;
         ctx.stroke();
       });
+      ctx.restore();
     }
   } else if (el.type === 'rectangle') {
     const topLeft = worldToScreen(el.x, el.y, canvas, viewport);
@@ -339,6 +343,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         worldToScreen(el.x, el.y + el.height / 2, canvas, viewport)
       ];
       
+      ctx.save();
       controlPoints.forEach((pt, idx) => {
         ctx.fillStyle = idx === 4 ? '#E44A33' : '#2B2B2B';
         ctx.beginPath();
@@ -348,6 +353,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         ctx.lineWidth = 2;
         ctx.stroke();
       });
+      ctx.restore();
     }
   } else if (el.type === 'circle') {
     const center = worldToScreen(el.cx, el.cy, canvas, viewport);
@@ -408,6 +414,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         worldToScreen(el.cx, el.cy - (el.radiusY || el.radius), canvas, viewport)
       ];
       
+      ctx.save();
       controlPoints.forEach((pt, idx) => {
         ctx.fillStyle = idx === 0 ? '#E44A33' : '#2B2B2B';
         ctx.beginPath();
@@ -417,6 +424,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         ctx.lineWidth = 2;
         ctx.stroke();
       });
+      ctx.restore();
     }
   } else if (el.type === 'text') {
     const pos = worldToScreen(el.x, el.y, canvas, viewport);
@@ -528,6 +536,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         { x: pos.x, y: pos.y - textHeight / 2 }                // left
       ];
 
+      ctx.save();
       corners.forEach((pt, idx) => {
         ctx.fillStyle = '#2B2B2B';
         ctx.beginPath();
@@ -537,6 +546,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         ctx.lineWidth = 2;
         ctx.stroke();
       });
+      ctx.restore();
     }
     
     // Rendu du curseur APRÈS le rectangle de sélection pour qu'il soit visible
