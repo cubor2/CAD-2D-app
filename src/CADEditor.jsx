@@ -456,7 +456,7 @@ const CADEditor = () => {
               id: getNextId(),
               type: 'line',
               ...edges[edge],
-              stroke: darkMode ? '#ffffff' : '#000000',
+              stroke: el.stroke || '#2B2B2B',
               strokeWidth: el.strokeWidth || 1.5
             });
           }
@@ -507,7 +507,7 @@ const CADEditor = () => {
               radius: radius,
               startAngle: range.start,
               endAngle: range.end,
-              stroke: darkMode ? '#ffffff' : '#000000',
+              stroke: el.stroke || '#2B2B2B',
               strokeWidth: el.strokeWidth || 1.5
             });
           }
