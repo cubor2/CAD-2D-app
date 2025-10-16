@@ -9,6 +9,7 @@ import {
   drawSelectionBox,
   drawWorkArea
 } from '../utils/drawing';
+import { RULER_SIZE } from '../constants';
 
 const Canvas = React.memo(({
   viewport,
@@ -47,17 +48,61 @@ const Canvas = React.memo(({
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
     
-    ctx.fillStyle = darkMode ? '#1a1a1a' : '#ffffff';
+    ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, rect.width, rect.height);
 
     ctx.save();
     drawGrid(ctx, canvas, viewport, darkMode, showRulers);
     
-    // Dessiner la zone de travail avant les éléments
+    // Dessiner la zone de travail en premier (tout en dessous)
     drawWorkArea(ctx, canvas, viewport, workArea);
+    
+    // Définir la largeur des bordures noires
+    const borderWidth = 10;
+    
+    // Dessiner les règles (au-dessus de la zone de travail, en dessous du rectangle noir)
+    if (showRulers) {
+      drawRulers(ctx, canvas, viewport, darkMode, showRulers, borderWidth);
+    }
+    
+    // Dessiner les grosses bordures noires avec fillRect pour une épaisseur fixe (sans le bas)
+    // Les bordures commencent à 0 pour couvrir partiellement les règles
+    const rulerOffset = showRulers ? RULER_SIZE : 0;
+    const x = 0;
+    const y = 0;
+    const w = rect.width;
+    const h = rect.height;
+    
+    ctx.fillStyle = '#2B2B2B';
+    
+    // Barre horizontale du haut
+    ctx.fillRect(x, y, w, borderWidth);
+    
+    // Barre verticale gauche (jusqu'en bas de l'écran)
+    ctx.fillRect(x, y, borderWidth, h);
+    
+    // Barre verticale droite (jusqu'en bas de l'écran)
+    ctx.fillRect(w - borderWidth, y, borderWidth, h);
+    
+    // Ajouter les lignes blanches en biseau aux coins du haut (couvrant toute l'épaisseur de la barre)
+    const bevelLength = 10;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1.5;
+    
+    // Coin haut-gauche (ligne diagonale partant exactement du coin extérieur)
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(bevelLength, bevelLength);
+    ctx.stroke();
+    
+    // Coin haut-droite (ligne diagonale partant exactement du coin extérieur)
+    ctx.beginPath();
+    ctx.moveTo(w, 0);
+    ctx.lineTo(w - bevelLength, bevelLength);
+    ctx.stroke();
 
     if (showRulers) {
-      drawGuides(ctx, canvas, viewport, guides, showRulers);
+      drawGuides(ctx, canvas, viewport, guides, showRulers, borderWidth);
     }
 
     elements.forEach(el => {
@@ -76,10 +121,6 @@ const Canvas = React.memo(({
 
     drawSelectionBox(ctx, selectionBox);
     drawSnapPoint(ctx, canvas, viewport, snapPoint, selectedIds);
-
-    if (showRulers) {
-      drawRulers(ctx, canvas, viewport, darkMode, showRulers);
-    }
 
     ctx.restore();
   };

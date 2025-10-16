@@ -15,7 +15,8 @@ const MenuBar = React.memo(({
   onGroup,
   onUngroup,
   hasSelection,
-  hasMultipleSelection
+  hasMultipleSelection,
+  onOpenDesignSystem
 }) => {
   const [openMenu, setOpenMenu] = useState(null);
   const menuRef = useRef(null);
@@ -43,17 +44,17 @@ const MenuBar = React.memo(({
   };
 
   return (
-    <div className="h-10 bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 flex items-center px-2 text-sm relative" ref={menuRef}>
-      <div className="relative">
+    <div className="h-12 bg-drawhard-beige border-b-2 border-drawhard-dark flex items-center text-sm relative uppercase font-bold tracking-extra-wide" ref={menuRef}>
+      <div className="relative h-full">
         <button
           onClick={() => toggleMenu('file')}
-          className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          className="h-full px-3 hover:bg-drawhard-hover hover:text-white transition-colors"
         >
           Fichier
         </button>
         
         {openMenu === 'file' && (
-          <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg z-50">
+          <div className="absolute top-full left-0 w-64 bg-drawhard-beige border-2 border-drawhard-dark shadow-lg z-50 normal-case font-normal tracking-normal">
             <MenuItem 
               label="Nouveau" 
               shortcut="Ctrl + N"
@@ -64,7 +65,7 @@ const MenuBar = React.memo(({
               shortcut="Ctrl + O"
               onClick={() => handleMenuAction(onOpen)}
             />
-            <div className="h-px bg-gray-300 dark:bg-gray-700 my-1" />
+            <div className="h-px bg-drawhard-grid my-1" />
             <MenuItem 
               label="Enregistrer" 
               shortcut="Ctrl + S"
@@ -75,7 +76,7 @@ const MenuBar = React.memo(({
               shortcut="Ctrl + Shift + S"
               onClick={() => handleMenuAction(onSaveAs)}
             />
-            <div className="h-px bg-gray-300 dark:bg-gray-700 my-1" />
+            <div className="h-px bg-drawhard-grid my-1" />
             <SubMenuItem
               label="Exporter en..."
               items={[
@@ -84,7 +85,7 @@ const MenuBar = React.memo(({
                 { label: 'DXF', onClick: () => handleMenuAction(() => onExport('dxf')) },
               ]}
             />
-            <div className="h-px bg-gray-300 dark:bg-gray-700 my-1" />
+            <div className="h-px bg-drawhard-grid my-1" />
             <MenuItem 
               label="Fermer" 
               shortcut=""
@@ -94,16 +95,16 @@ const MenuBar = React.memo(({
         )}
       </div>
 
-      <div className="relative ml-2">
+      <div className="relative h-full">
         <button
           onClick={() => toggleMenu('edit')}
-          className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          className="h-full px-3 hover:bg-drawhard-hover hover:text-white transition-colors"
         >
           Édition
         </button>
         
         {openMenu === 'edit' && (
-          <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg z-50">
+          <div className="absolute top-full left-0 w-64 bg-drawhard-beige border-2 border-drawhard-dark shadow-lg z-50 normal-case font-normal tracking-normal">
             <MenuItem 
               label="Annuler" 
               shortcut="Ctrl + Z"
@@ -114,7 +115,7 @@ const MenuBar = React.memo(({
               shortcut="Ctrl + Shift + Z"
               onClick={() => handleMenuAction(onRedo)}
             />
-            <div className="h-px bg-gray-300 dark:bg-gray-700 my-1" />
+            <div className="h-px bg-drawhard-grid my-1" />
             <MenuItem 
               label="Couper" 
               shortcut="Ctrl + X"
@@ -132,7 +133,7 @@ const MenuBar = React.memo(({
               shortcut="Ctrl + V"
               onClick={() => handleMenuAction(onPaste)}
             />
-            <div className="h-px bg-gray-300 dark:bg-gray-700 my-1" />
+            <div className="h-px bg-drawhard-grid my-1" />
             <MenuItem 
               label="Supprimer" 
               shortcut="Delete"
@@ -143,16 +144,16 @@ const MenuBar = React.memo(({
         )}
       </div>
 
-      <div className="relative ml-2">
+      <div className="relative h-full">
         <button
           onClick={() => toggleMenu('object')}
-          className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          className="h-full px-3 hover:bg-drawhard-hover hover:text-white transition-colors"
         >
           Objet
         </button>
         
         {openMenu === 'object' && (
-          <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg z-50">
+          <div className="absolute top-full left-0 w-64 bg-drawhard-beige border-2 border-drawhard-dark shadow-lg z-50 normal-case font-normal tracking-normal">
             <MenuItem 
               label="Grouper" 
               shortcut="Ctrl + G"
@@ -169,28 +170,40 @@ const MenuBar = React.memo(({
         )}
       </div>
 
-      <div className="relative ml-2">
+      <div className="relative h-full">
         <button
           onClick={() => toggleMenu('select')}
-          className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          className="h-full px-3 hover:bg-drawhard-hover hover:text-white transition-colors"
         >
           Sélection
         </button>
       </div>
 
-      <div className="relative ml-2">
+      <div className="relative h-full">
         <button
           onClick={() => toggleMenu('view')}
-          className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          className="h-full px-3 hover:bg-drawhard-hover hover:text-white transition-colors"
         >
           Affichage
         </button>
       </div>
 
-      <div className="relative ml-2">
+      <div className="relative h-full ml-auto">
+        <button
+          onClick={() => {
+            setOpenMenu(null);
+            onOpenDesignSystem();
+          }}
+          className="h-full px-3 hover:bg-drawhard-accent hover:text-white transition-colors"
+        >
+          Design System
+        </button>
+      </div>
+
+      <div className="relative h-full">
         <button
           onClick={() => toggleMenu('help')}
-          className="px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          className="h-full px-3 hover:bg-drawhard-hover hover:text-white transition-colors"
         >
           Aide
         </button>
@@ -204,13 +217,13 @@ const MenuItem = ({ label, shortcut, onClick, disabled }) => (
     onClick={disabled ? undefined : onClick}
     className={`w-full px-4 py-2 flex justify-between items-center text-left transition-colors ${
       disabled 
-        ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' 
-        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+        ? 'text-drawhard-grid cursor-not-allowed' 
+        : 'hover:bg-drawhard-hover hover:text-white'
     }`}
     disabled={disabled}
   >
     <span>{label}</span>
-    {shortcut && <span className="text-gray-500 dark:text-gray-400 text-xs ml-8">{shortcut}</span>}
+    {shortcut && <span className="text-drawhard-hover text-xs ml-8">{shortcut}</span>}
   </button>
 );
 
@@ -224,19 +237,19 @@ const SubMenuItem = ({ label, items }) => {
       onMouseLeave={() => setShowSubmenu(false)}
     >
       <button
-        className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex justify-between items-center text-left transition-colors"
+        className="w-full px-4 py-2 hover:bg-drawhard-hover hover:text-white flex justify-between items-center text-left transition-colors"
       >
         <span>{label}</span>
-        <span className="text-gray-500">▸</span>
+        <span className="text-drawhard-hover">▸</span>
       </button>
       
       {showSubmenu && (
-        <div className="absolute left-full top-0 ml-1 w-48 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg">
+        <div className="absolute left-full top-0 w-48 bg-drawhard-beige border-2 border-drawhard-dark shadow-lg">
           {items.map((item, idx) => (
             <button
               key={idx}
               onClick={item.onClick}
-              className="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-left transition-colors"
+              className="w-full px-4 py-2 hover:bg-drawhard-hover hover:text-white text-left transition-colors"
             >
               {item.label}
             </button>

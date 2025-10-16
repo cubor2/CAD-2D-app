@@ -1,244 +1,177 @@
-# CAD 2D Editor
+# LaserLair - Brutaliste CAD Editor
 
-Application de dessin CAD 2D pour créer des objets destinés à la découpe laser.
+**Version 1.0**
 
-## 🌐 Application en ligne
+Un éditeur CAD 2D minimaliste et puissant avec une identité visuelle brutalist inspirée de Die Hard et AutoCAD.
 
-**Accédez directement à l'application :** [https://cad-2d-app.netlify.app/](https://cad-2d-app.netlify.app/)
+![LaserLair Logo](public/laserlair-logo.png)
 
-Aucune installation requise ! L'application est hébergée gratuitement sur Netlify et se met à jour automatiquement à chaque modification du code.
+## 🎨 Design System
 
-## Démarrage rapide (développement local)
+LaserLair suit une philosophie de design brutaliste caractérisée par :
 
-### Installation des dépendances
+### Palette de couleurs
+
+- **Fond principal** : `#FFFFFF` (blanc)
+- **Grille/lignes** : `#D8D3C7` (gris clair)
+- **Interface active** : `#2B2B2B` (noir foncé)
+- **Accent** : `#E44A33` (rouge-orange)
+- **Texte** : `#1F1F1F` (noir)
+- **Hover/secondaire** : `#4A4A4A` (gris foncé)
+
+### Principes de design
+
+- **Coins carrés** : Aucun border-radius, design épuré et fonctionnel
+- **Typographie** : Inter Bold, UPPERCASE, large tracking pour les titres
+- **Grid System** : Espacement cohérent (4, 8, 12, 24px)
+- **Contraste élevé** : Lisibilité maximale
+- **Minimalisme** : Pas de fioritures, focus sur la fonctionnalité
+
+## ✨ Fonctionnalités
+
+### Outils de dessin
+
+- **Rectangle** (R) : Création de rectangles avec dimensions précises
+- **Cercle** (C) : Création de cercles et ellipses
+- **Ligne** (L) : Tracé de segments de ligne
+- **Polygone** (P) : Création de polygones réguliers (3-12 côtés)
+- **Texte** (T) : Ajout de texte avec styles personnalisables
+
+### Navigation et manipulation
+
+- **Pan** (Molette / Espace + Clic) : Déplacement de la vue
+- **Zoom** (Molette + Ctrl) : Zoom avant/arrière
+- **Sélection** (V) : Sélection et déplacement d'éléments
+- **Suppression** (Suppr) : Suppression d'éléments sélectionnés
+
+### Fonctionnalités avancées
+
+- **Grouping** (Ctrl+G) : Grouper les éléments sélectionnés
+- **Ungrouping** (Ctrl+Shift+G) : Dégrouper les éléments
+- **Clipboard** :
+  - Copier (Ctrl+C)
+  - Couper (Ctrl+X)
+  - Coller (Ctrl+V)
+- **Undo/Redo** :
+  - Annuler (Ctrl+Z)
+  - Rétablir (Ctrl+Y / Ctrl+Shift+Z)
+- **Guides** : Création de guides horizontaux et verticaux par glisser-déposer depuis les règles
+- **Snap to Grid** : Alignement automatique sur la grille
+- **Snap to Guides** : Alignement automatique sur les guides
+- **Zone de travail** : Définir une zone de travail personnalisée (utile pour la découpe laser)
+
+### Édition avancée
+
+- Mode édition pour :
+  - Déplacer les points de contrôle des rectangles et cercles
+  - Ajuster les rayons des cercles
+  - Modifier les dimensions en temps réel
+  - Supprimer des sommets (double-clic)
+  - Ajouter des sommets (double-clic sur une arête)
+
+## 🚀 Installation
+
 ```bash
+# Installer les dépendances
 npm install
-```
 
-### Lancement du serveur de développement
-```bash
+# Lancer le serveur de développement
 npm run dev
+
+# Build pour la production
+npm build
 ```
 
-L'application sera accessible sur **http://localhost:5173**
+## 🛠️ Stack Technique
 
-## Fonctionnalités
+- **React 18** : Framework UI moderne avec hooks
+- **Vite** : Build tool ultra-rapide avec HMR
+- **Tailwind CSS** : Utility-first CSS framework
+- **Lucide React** : Icônes modernes et légères
+- **Canvas API** : Rendu 2D haute performance
 
-### Outils disponibles
-- **Sélection et déplacement** : Sélectionner et déplacer tous les éléments (lignes, rectangles, cercles, arcs, textes)
-- **Création de formes** : Lignes, rectangles, cercles, arcs
-- **Texte** : Ajouter et éditer du texte avec mise en forme
-
-### Fonctionnalités des textes
-- **Sélection et déplacement** : Utiliser l'outil de sélection pour déplacer les zones de texte
-- **Édition de contenu** : Double-cliquer ou utiliser l'outil d'édition pour modifier le texte
-- **Redimensionnement** : 8 poignées de redimensionnement (4 coins + 4 milieux de côté)
-- **Navigation au clavier** : Flèches, Home, End, Shift+flèches pour la sélection
-- **Formatage** : Style, poids et taille de police personnalisables
-
-### Raccourcis clavier
-- `Ctrl+Z` / `Cmd+Z` : Annuler
-- `Ctrl+Y` / `Cmd+Y` : Refaire
-- `Ctrl+C` / `Cmd+C` : Copier
-- `Ctrl+V` / `Cmd+V` : Coller
-- `Ctrl+X` / `Cmd+X` : Couper
-- `Suppr` / `Backspace` : Supprimer
-- `Echap` : Désélectionner
-
-### Build pour la production
-```bash
-npm run build
-```
-
-## Unités et mesures
-
-**1 unité = 1 millimètre (mm)**
-
-Tous les dessins sont créés en millimètres pour une précision optimale lors de la découpe laser. La grille affiche des intervalles de 1mm avec des lignes majeures tous les 10mm (1cm).
-
-## Raccourcis clavier
-
-### Fichier
-- **Ctrl/Cmd + N** : Nouveau projet
-- **Ctrl/Cmd + O** : Ouvrir un fichier
-- **Ctrl/Cmd + S** : Enregistrer
-- **Ctrl/Cmd + Shift + S** : Enregistrer sous
-
-### Outils
-- **S** : Outil de sélection/déplacement
-- **E** : Outil d'édition
-- **Tab** : Basculer entre sélection et édition
-- **L** : Outil ligne
-- **R** : Outil rectangle
-- **C** : Outil cercle
-- **T** : Outil texte
-
-### Navigation
-- **Espace + Clic gauche** : Déplacer la vue (pan)
-- **Shift + Molette** : Zoom avant/arrière
-- **Flèches directionnelles** : Déplacer les éléments sélectionnés (1mm)
-- **Shift + Flèches** : Déplacer les éléments sélectionnés (5mm)
-
-### Édition
-- **Ctrl/Cmd + Z** : Annuler
-- **Ctrl/Cmd + Y** ou **Ctrl/Cmd + Shift + Z** : Rétablir
-- **Ctrl/Cmd + X** : Couper
-- **Ctrl/Cmd + C** : Copier
-- **Ctrl/Cmd + V** : Coller
-- **Shift + Ctrl/Cmd + V** : Coller sur place
-- **Delete/Backspace** : Supprimer les éléments sélectionnés
-- **Ctrl/Cmd + G** : Grouper les éléments sélectionnés
-- **Ctrl/Cmd + Shift + G** : Dégrouper
-- **Shift + Clic** : Ajouter/retirer de la sélection
-
-### Édition de texte
-- **Double-clic** : Entrer en mode édition de texte (outil "edit" uniquement)
-- **Flèches directionnelles** : Déplacer le curseur
-- **Shift + Flèches** : Sélectionner du texte
-- **Ctrl/Cmd + A** : Sélectionner tout le texte
-- **Home/End** : Aller au début/fin de la ligne
-- **Entrée** : Nouvelle ligne
-- **Backspace/Delete** : Supprimer du texte
-- **Clic dans le texte** : Positionner le curseur
-
-### Dessin
-- **Shift pendant la création** : Contraindre les proportions (cercles, rectangles carrés, lignes à 45°)
-- **Shift pendant l'édition** : Maintenir le ratio d'aspect original (rectangles, ellipses)
-
-### Mode Édition avancé
-- **Double-clic** (en mode sélection) : Passe automatiquement en mode édition
-- **Échap** (en mode édition) : Retourne en mode sélection
-- **Clic sur une arête** : Sélectionne l'arête (rectangle/cercle)
-- **Double-clic sur une arête** : Permet de la déplacer ou supprimer
-- **Delete** sur une arête : Supprime l'arête et crée des lignes/arcs
-
-## Fonctionnalités
-
-### Dessin
-- Dessin de lignes, rectangles, cercles et ellipses
-- **Édition de texte avec curseur clignotant**
-- Édition précise des points de contrôle
-- Snap sur grille (1mm)
-- Snap sur les éléments (points, centres, milieux, arêtes)
-- Règles et guides magnétiques
-- Groupement d'éléments
-- Affichage des dimensions en millimètres
-- Sélection multiple (Shift + Clic ou rectangle de sélection)
-
-### Zone de travail
-- **Configuration de la taille de découpe** : Définissez les dimensions de votre machine (largeur × hauteur en mm)
-- **Rectangle de délimitation visuel** : Affichage d'un rectangle orange centré sur l'origine (0,0)
-- **Zones hors limites** : Zones extérieures légèrement assombries pour indiquer les dépassements
-- **Label dynamique** : Affiche en temps réel les dimensions configurées
-- **Affichage désactivable** : Case à cocher pour masquer/afficher la zone
-- **Panneau de propriétés** : Toujours accessible, même sans élément sélectionné
-- **Valeurs par défaut** : 300 × 300 mm (personnalisable selon votre machine)
-
-### Fichiers
-- Enregistrement/ouverture de projets (format JSON)
-- Export SVG avec dimensions en millimètres
-- Export PNG haute résolution (96 DPI)
-- Export DXF (à venir)
-
-### Interface
-- Mode clair/sombre
-- Historique complet d'actions (Undo/Redo)
-- Menus complets avec toutes les commandes standard :
-  * Menu Fichier (Nouveau, Ouvrir, Sauver, Exporter)
-  * Menu Édition (Annuler, Rétablir, Couper, Copier, Coller, Supprimer)
-  * Menu Objet (Grouper, Dégrouper)
-- Copier/coller avec décalage automatique
-- Panneau de propriétés dynamique
-- États de menu intelligents (désactivation si pas de sélection)
-- Feedback visuel lors des opérations :
-  * Flash vert lors du groupement
-  * Flash orange lors du dégroupement
-
-## Export pour découpe laser
-
-### Format SVG (recommandé)
-L'export SVG utilise des unités en millimètres avec une correspondance 1:1. Les traits sont en noir (stroke-width: 0.3mm) avec un fond transparent, parfait pour l'importation dans des logiciels de découpe laser comme :
-- LightBurn
-- RDWorks
-- LaserGRBL
-- Inkscape
-
-### Format PNG
-L'export PNG génère une image en haute résolution (96 DPI / 3.78 pixels par mm) avec :
-- Fond blanc
-- Traits noirs
-- Dimensions précises pour visualisation et impression
-
-## Technologies utilisées
-
-- React 18
-- Vite
-- Tailwind CSS
-- Lucide React (icônes)
-- HTML Canvas API
-
-## Structure du projet
-
-Le projet suit une architecture modulaire React recommandée :
+## 📁 Structure du projet
 
 ```
 src/
-├── components/        # Composants React réutilisables
-│   ├── Canvas.jsx       # Composant de rendu Canvas
-│   ├── Toolbar.jsx      # Barre d'outils
-│   ├── MenuBar.jsx      # Menu principal
-│   ├── PropertiesPanel.jsx  # Panneau des propriétés
-│   └── ...
-├── hooks/            # Hooks React personnalisés
-│   ├── useViewport.js   # Gestion du viewport (zoom, pan)
-│   ├── useElements.js   # Gestion des éléments (undo/redo)
-│   ├── useSelection.js  # Gestion de la sélection
-│   └── useKeyboardShortcuts.js  # Raccourcis clavier
-├── utils/            # Fonctions utilitaires pures
-│   ├── transforms.js    # Conversions de coordonnées
-│   ├── geometry.js      # Calculs géométriques
-│   ├── drawing.js       # Fonctions de rendu Canvas
-│   ├── snap.js          # Système de snapping
-│   └── ...
-├── constants/        # Constantes globales
-│   └── index.js
-├── handlers/         # Gestionnaires d'événements complexes
-└── CADEditor.jsx     # Composant principal
+├── components/
+│   ├── Canvas.jsx           # Zone de dessin principale
+│   ├── MenuBar.jsx          # Barre de menu supérieure
+│   ├── Toolbar.jsx          # Barre d'outils latérale
+│   ├── TopControls.jsx      # Contrôles de zoom/navigation
+│   ├── PropertiesPanel.jsx  # Panneau de propriétés
+│   └── DesignSystem.jsx     # Documentation du design system
+├── hooks/
+│   ├── useCanvas.js         # Logique de gestion du canvas
+│   ├── useSelection.js      # Logique de sélection
+│   ├── useViewport.js       # Logique de viewport (pan/zoom)
+│   ├── useClipboard.js      # Logique du presse-papier
+│   └── useHistory.js        # Logique d'undo/redo
+├── utils/
+│   ├── drawing.js           # Fonctions de rendu
+│   ├── geometry.js          # Calculs géométriques
+│   └── snapPoints.js        # Détection des points d'accrochage
+├── constants/
+│   └── index.js             # Constantes globales
+└── CADEditor.jsx            # Composant racine
 ```
 
-### Principes d'architecture
+## 🎯 Raccourcis clavier
 
-✅ **Séparation des responsabilités** : Chaque fichier a un rôle précis  
-✅ **Composants réutilisables** : Les composants UI sont isolés  
-✅ **Logique métier externalisée** : Les hooks contiennent la logique  
-✅ **Fonctions pures** : Les utils sont testables et prévisibles  
-✅ **Pas de duplication** : Le code commun est mutualisé
+### Outils
+- `V` : Sélection
+- `R` : Rectangle
+- `C` : Cercle
+- `L` : Ligne
+- `P` : Polygone
+- `T` : Texte
 
-## Documentation technique
+### Navigation
+- `Molette` : Pan vertical
+- `Shift + Molette` : Pan horizontal
+- `Ctrl + Molette` : Zoom
+- `Espace + Clic` : Pan manuel
 
-Pour les développeurs travaillant sur le code :
+### Édition
+- `Ctrl + C` : Copier
+- `Ctrl + X` : Couper
+- `Ctrl + V` : Coller
+- `Suppr` : Supprimer
+- `Ctrl + Z` : Annuler
+- `Ctrl + Y` : Rétablir
+- `Ctrl + G` : Grouper
+- `Ctrl + Shift + G` : Dégrouper
+- `Échap` : Désélectionner tout
 
-### 📐 Systèmes de coordonnées
-Comprendre les différents systèmes de coordonnées est **crucial** pour éviter des bugs de positionnement et de redimensionnement.
+### Affichage
+- `Ctrl + 0` : Réinitialiser le zoom
+- `Ctrl + R` : Afficher/Masquer les règles
 
-📚 **[Guide complet des systèmes de coordonnées](docs/COORDINATE_SYSTEMS.md)**
-- Les 4 systèmes de coordonnées (Monde, Canvas, Client, Canvas-Relative)
-- Conversions entre systèmes
-- Différence critique entre Position et Delta/Vecteur
-- Bugs courants et leurs solutions
-- Checklist pour éviter les erreurs
+## 🎨 Personnalisation
 
-📝 **[Commentaires détaillés du code de redimensionnement](docs/CODE_COMMENTS_TEXT_RESIZE.md)**
-- Explication ligne par ligne des fonctions critiques
-- `getTextControlPointsScreen()` : Calcul des poignées
-- `handleTextResize()` : Algorithme de redimensionnement
-- Détection de clic sur les poignées
-- Pièges à éviter avec exemples
+Les couleurs et constantes peuvent être modifiées dans :
+- `tailwind.config.js` : Palette de couleurs
+- `src/constants/index.js` : Tailles de grille, règles, etc.
 
-### 🐛 Debugging
-Si vous rencontrez des problèmes avec le positionnement, le redimensionnement ou la détection de clic :
-1. Identifiez le système de coordonnées de vos variables
-2. Vérifiez si vous manipulez une **position** ou un **delta/vecteur**
-3. Consultez la section "Bugs Rencontrés" dans `COORDINATE_SYSTEMS.md`
-4. Utilisez les techniques de debug décrites dans la documentation
+## 🤝 Contributeurs
 
+- **Damien Barré** : Product Owner & UX Designer
+- **Claude (Anthropic)** : Développement & Implémentation
+
+## 📝 License
+
+Ce projet est un prototype privé pour Second Knife.
+
+## 🔮 Roadmap Future
+
+- [ ] Export SVG/DXF pour découpe laser
+- [ ] Import de fichiers DXF
+- [ ] Bibliothèque de formes prédéfinies
+- [ ] Calques (layers)
+- [ ] Mesures et annotations
+- [ ] Mode dark/light toggle
+- [ ] Collaboration en temps réel
+
+---
+
+**LaserLair** - Où la précision rencontre le brutalisme. 🔪⚡

@@ -68,6 +68,7 @@ export const useSelection = () => {
     selectedIds,
     setSelectedIds,
     groups,
+    setGroups,
     flashingIds: flashingState.ids,
     flashType: flashingState.type,
     createGroup,

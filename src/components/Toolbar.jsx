@@ -19,16 +19,20 @@ const Toolbar = React.memo(({ tool, onToolChange, onClearSelectedEdge }) => {
   };
 
   return (
-    <div className="w-14 bg-gray-800 flex flex-col items-center py-4 gap-2">
+    <div className="w-14 bg-drawhard-beige border-r-2 border-drawhard-dark flex flex-col items-center">
       {tools.map(({ id, icon: Icon, label, shortcut }) => (
         <button 
           key={id}
           onClick={() => handleToolClick(id)}
-          className={`p-2 rounded hover:bg-gray-700 ${tool === id ? 'bg-gray-700' : ''} relative`}
+          className={`w-full p-2 transition-colors relative ${
+            tool === id 
+              ? 'bg-drawhard-accent text-white' 
+              : 'bg-drawhard-beige text-drawhard-dark hover:bg-drawhard-hover hover:text-white'
+          }`}
           title={label}
         >
-          <Icon size={20} />
-          <span className="absolute bottom-0 right-0 text-[10px] font-bold text-gray-400">{shortcut}</span>
+          <Icon size={20} strokeWidth={2.5} className="mx-auto" />
+          <span className="absolute bottom-0 right-3 text-[10px] font-bold opacity-50">{shortcut}</span>
         </button>
       ))}
     </div>

@@ -4,11 +4,11 @@ import { Bold, Italic } from 'lucide-react';
 const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, workArea, onWorkAreaChange }) => {
   // Bloc "Zone de travail" (toujours visible)
   const WorkAreaSection = () => (
-    <div className="mb-6 pb-4 border-b border-gray-700">
-      <h4 className="text-sm font-semibold mb-3 text-blue-400">Zone de travail</h4>
-      <div className="space-y-3">
+    <div className="border-b-2 border-drawhard-dark pb-3 mb-4">
+      <h4 className="text-sm font-bold pt-3 mb-3 uppercase tracking-extra-wide text-center px-4">Zone de travail</h4>
+      <div className="space-y-2 px-4">
         <div>
-          <label className="text-sm text-gray-400">Largeur (mm)</label>
+          <label className="text-xs text-drawhard-hover block mb-1 text-left">Largeur (mm)</label>
           <input 
             type="number"
             value={workArea.width}
@@ -16,12 +16,12 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
               const newWidth = parseFloat(e.target.value) || 0;
               onWorkAreaChange({ ...workArea, width: newWidth });
             }}
-            className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+            className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-accent"
             min="0"
           />
         </div>
         <div>
-          <label className="text-sm text-gray-400">Hauteur (mm)</label>
+          <label className="text-xs text-drawhard-hover block mb-1 text-left">Hauteur (mm)</label>
           <input 
             type="number"
             value={workArea.height}
@@ -29,7 +29,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
               const newHeight = parseFloat(e.target.value) || 0;
               onWorkAreaChange({ ...workArea, height: newHeight });
             }}
-            className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+            className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-accent"
             min="0"
           />
         </div>
@@ -41,9 +41,8 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
             onChange={(e) => {
               onWorkAreaChange({ ...workArea, visible: e.target.checked });
             }}
-            className="rounded"
           />
-          <label htmlFor="showWorkArea" className="text-sm text-gray-400">Afficher la zone</label>
+          <label htmlFor="showWorkArea" className="text-xs text-drawhard-hover">Afficher la zone</label>
         </div>
       </div>
     </div>
@@ -51,12 +50,23 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
   
   if (selectedIds.length === 0) {
     return (
-      <div className="w-64 bg-gray-800 p-4 overflow-y-auto">
-        <h3 className="text-lg font-bold mb-4">Proprietes</h3>
-        <WorkAreaSection />
-        <p className="text-sm text-gray-500">Aucun element selectionne</p>
+      <div className="w-64 bg-drawhard-panel border-l-2 border-drawhard-dark flex flex-col overflow-y-auto">
+        <div className="bg-drawhard-accent px-6 py-8 flex flex-col items-center justify-center border-b-2 border-drawhard-dark">
+          <img 
+            src="/laserlair-logo.png" 
+            alt="LaserLair" 
+            style={{ width: '180px', height: 'auto', filter: 'brightness(0) invert(1)' }} 
+          />
+          <p className="text-white text-xs mt-2 font-bold tracking-wide">VERSION 1.0</p>
       </div>
-    );
+      <div className="flex-1">
+        <WorkAreaSection />
+        <div className="text-center mt-3 px-4">
+          <p className="text-sm text-drawhard-hover">Aucun élément sélectionné</p>
+        </div>
+      </div>
+    </div>
+  );
   }
 
   const selectedElement = selectedIds.length === 1 
@@ -64,23 +74,30 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
     : null;
 
   return (
-    <div className="w-64 bg-gray-800 p-4 overflow-y-auto">
-      <h3 className="text-lg font-bold mb-4">Proprietes</h3>
-      
-      <WorkAreaSection />
-      
-      <div className="space-y-4">
+    <div className="w-64 bg-drawhard-panel border-l-2 border-drawhard-dark flex flex-col overflow-y-auto">
+      <div className="bg-drawhard-accent px-6 py-8 flex flex-col items-center justify-center border-b-2 border-drawhard-dark">
+        <img 
+          src="/laserlair-logo.png" 
+          alt="LaserLair" 
+          style={{ width: '180px', height: 'auto', filter: 'brightness(0) invert(1)' }} 
+        />
+        <p className="text-white text-xs mt-2 font-bold tracking-wide">VERSION 1.0</p>
+      </div>
+      <div className="flex-1">
+        <WorkAreaSection />
+        
         <div>
-          <label className="text-sm text-gray-400">Selection</label>
-          <p className="text-sm">{selectedIds.length} element(s)</p>
-        </div>
+          <h4 className="text-sm font-bold pt-3 mb-3 uppercase tracking-extra-wide text-center px-4">Sélection</h4>
+          <div className="px-4 mb-2">
+            <p className="text-sm font-bold text-center">{selectedIds.length} élément(s)</p>
+          </div>
         
         {selectedElement && (
-          <div className="space-y-3">
+          <div className="space-y-2 px-4 pb-3">
             {selectedElement.type === 'line' && (
               <div>
-                <label className="text-sm text-gray-400">Longueur</label>
-                <p className="text-sm font-mono">
+                <label className="text-xs text-drawhard-hover block mb-1 text-left">Longueur</label>
+                <p className="text-sm font-mono font-bold">
                   {Math.sqrt(
                     (selectedElement.x2 - selectedElement.x1) ** 2 + 
                     (selectedElement.y2 - selectedElement.y1) ** 2
@@ -92,7 +109,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
             {selectedElement.type === 'rectangle' && (
               <>
                 <div>
-                  <label className="text-sm text-gray-400">Largeur</label>
+                  <label className="text-xs text-drawhard-hover block mb-1 text-left">Largeur</label>
                   <input 
                     type="number"
                     value={Math.abs(selectedElement.width).toFixed(2)}
@@ -100,11 +117,11 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                       const newWidth = parseFloat(e.target.value) || 0;
                       onUpdateElement(selectedElement.id, { width: newWidth });
                     }}
-                    className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+                    className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-accent"
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-400">Hauteur</label>
+                  <label className="text-xs text-drawhard-hover block mb-1 text-left">Hauteur</label>
                   <input 
                     type="number"
                     value={Math.abs(selectedElement.height).toFixed(2)}
@@ -112,7 +129,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                       const newHeight = parseFloat(e.target.value) || 0;
                       onUpdateElement(selectedElement.id, { height: newHeight });
                     }}
-                    className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+                    className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-accent"
                   />
                 </div>
               </>
@@ -121,7 +138,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
             {selectedElement.type === 'arc' && (
               <>
                 <div>
-                  <label className="text-sm text-gray-400">Rayon</label>
+                  <label className="text-xs text-drawhard-hover block mb-1 text-left">Rayon</label>
                   <input 
                     type="number"
                     value={selectedElement.radius.toFixed(2)}
@@ -129,12 +146,12 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                       const newRadius = parseFloat(e.target.value) || 0;
                       onUpdateElement(selectedElement.id, { radius: newRadius });
                     }}
-                    className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+                    className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-accent"
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-400">Longueur d'arc</label>
-                  <p className="text-sm font-mono">
+                  <label className="text-xs text-drawhard-hover block mb-1 text-left">Longueur d'arc</label>
+                  <p className="text-sm font-mono font-bold">
                     {(Math.abs(selectedElement.endAngle - selectedElement.startAngle) * selectedElement.radius).toFixed(2)} mm
                   </p>
                 </div>
@@ -147,7 +164,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                  Math.abs(selectedElement.radiusX - selectedElement.radiusY) > 0.01 ? (
                   <>
                     <div>
-                      <label className="text-sm text-gray-400">Largeur (L)</label>
+                      <label className="text-xs text-drawhard-hover block mb-1 text-left">Largeur (L)</label>
                       <input 
                         type="number"
                         value={(selectedElement.radiusX * 2).toFixed(2)}
@@ -155,11 +172,11 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                           const newRadiusX = (parseFloat(e.target.value) || 0) / 2;
                           onUpdateElement(selectedElement.id, { radiusX: newRadiusX });
                         }}
-                        className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+                        className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-accent"
                       />
                     </div>
                     <div>
-                      <label className="text-sm text-gray-400">Hauteur (H)</label>
+                      <label className="text-xs text-drawhard-hover block mb-1 text-left">Hauteur (H)</label>
                       <input 
                         type="number"
                         value={(selectedElement.radiusY * 2).toFixed(2)}
@@ -167,13 +184,13 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                           const newRadiusY = (parseFloat(e.target.value) || 0) / 2;
                           onUpdateElement(selectedElement.id, { radiusY: newRadiusY });
                         }}
-                        className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+                        className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-accent"
                       />
                     </div>
                   </>
                 ) : (
                   <div>
-                    <label className="text-sm text-gray-400">Diametre (D)</label>
+                    <label className="text-xs text-drawhard-hover block mb-1 text-left">Diamètre (D)</label>
                     <input 
                       type="number"
                       value={((selectedElement.radiusX || selectedElement.radius) * 2).toFixed(2)}
@@ -185,7 +202,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                           radiusY: newRadius
                         });
                       }}
-                      className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+                      className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-accent"
                     />
                   </div>
                 )}
@@ -195,13 +212,13 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
             {selectedElement.type === 'text' && (
               <>
                 <div>
-                  <label className="text-sm text-gray-400">Police</label>
+                  <label className="text-xs text-drawhard-hover block mb-1 text-left">Police</label>
                   <select
                     value={selectedElement.fontFamily}
                     onChange={(e) => {
                       onUpdateElement(selectedElement.id, { fontFamily: e.target.value });
                     }}
-                    className="w-full bg-gray-700 px-2 py-1 rounded text-sm"
+                    className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm text-center text-drawhard-dark focus:outline-none focus:border-drawhard-accent"
                   >
                     <option value="Arial">Arial</option>
                     <option value="Times New Roman">Times New Roman</option>
@@ -212,7 +229,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-400">Taille</label>
+                  <label className="text-xs text-drawhard-hover block mb-1 text-left">Taille</label>
                   <input 
                     type="number"
                     value={selectedElement.fontSize}
@@ -220,13 +237,13 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                       const newSize = parseFloat(e.target.value) || 12;
                       onUpdateElement(selectedElement.id, { fontSize: newSize });
                     }}
-                    className="w-full bg-gray-700 px-2 py-1 rounded text-sm font-mono"
+                    className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-accent"
                     min="6"
                     max="200"
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-400 block mb-2">Style</label>
+                  <label className="text-xs text-drawhard-hover block mb-2 text-left">Style</label>
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
@@ -234,10 +251,10 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                           fontWeight: selectedElement.fontWeight === 'bold' ? 'normal' : 'bold' 
                         });
                       }}
-                      className={`flex-1 px-3 py-2 rounded flex items-center justify-center gap-2 transition-colors ${
+                      className={`flex-1 px-3 py-2 flex items-center justify-center gap-2 transition-colors border border-drawhard-dark ${
                         selectedElement.fontWeight === 'bold' 
-                          ? 'bg-blue-600 hover:bg-blue-700' 
-                          : 'bg-gray-700 hover:bg-gray-600'
+                          ? 'bg-drawhard-accent text-white' 
+                          : 'bg-drawhard-beige hover:bg-drawhard-hover hover:text-white'
                       }`}
                     >
                       <Bold size={16} />
@@ -248,10 +265,10 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
                           fontStyle: selectedElement.fontStyle === 'italic' ? 'normal' : 'italic' 
                         });
                       }}
-                      className={`flex-1 px-3 py-2 rounded flex items-center justify-center gap-2 transition-colors ${
+                      className={`flex-1 px-3 py-2 flex items-center justify-center gap-2 transition-colors border border-drawhard-dark ${
                         selectedElement.fontStyle === 'italic' 
-                          ? 'bg-blue-600 hover:bg-blue-700' 
-                          : 'bg-gray-700 hover:bg-gray-600'
+                          ? 'bg-drawhard-accent text-white' 
+                          : 'bg-drawhard-beige hover:bg-drawhard-hover hover:text-white'
                       }`}
                     >
                       <Italic size={16} />
@@ -262,6 +279,8 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, wo
             )}
           </div>
         )}
+        <div className="border-b-2 border-drawhard-dark mt-4"></div>
+        </div>
       </div>
     </div>
   );

@@ -11,8 +11,10 @@ export const drawGrid = (ctx, canvas, viewport, darkMode, showRulers) => {
   const startY = Math.floor((-canvasHeight / 2 - viewport.y) / viewport.zoom / GRID_SIZE) * GRID_SIZE;
   const endY = Math.ceil((canvasHeight / 2 - viewport.y) / viewport.zoom / GRID_SIZE) * GRID_SIZE;
 
+  const rulerOffset = showRulers ? RULER_SIZE : 0;
+
   if (viewport.zoom > 0.5) {
-    ctx.strokeStyle = darkMode ? '#2a2a2a' : '#e0e0e0';
+    ctx.strokeStyle = '#D8D3C7';
     ctx.lineWidth = 1;
 
     for (let x = startX; x <= endX; x += GRID_SIZE) {
@@ -32,7 +34,7 @@ export const drawGrid = (ctx, canvas, viewport, darkMode, showRulers) => {
     }
   }
 
-  ctx.strokeStyle = viewport.zoom > 0.5 ? (darkMode ? '#3a3a3a' : '#c0c0c0') : (darkMode ? '#2a2a2a' : '#e0e0e0');
+  ctx.strokeStyle = viewport.zoom > 0.5 ? '#C0C0C0' : '#D8D3C7';
   ctx.lineWidth = 2;
 
   for (let x = Math.floor(startX / MAJOR_GRID) * MAJOR_GRID; x <= endX; x += MAJOR_GRID) {
@@ -52,19 +54,22 @@ export const drawGrid = (ctx, canvas, viewport, darkMode, showRulers) => {
   }
 };
 
-export const drawRulers = (ctx, canvas, viewport, darkMode, showRulers) => {
+export const drawRulers = (ctx, canvas, viewport, darkMode, showRulers, borderWidth = 10) => {
   const rect = canvas.getBoundingClientRect();
   const canvasWidth = rect.width;
   const canvasHeight = rect.height;
   
-  ctx.fillStyle = darkMode ? '#2a2a2a' : '#f0f0f0';
-  ctx.fillRect(0, 0, canvasWidth, RULER_SIZE);
-  ctx.fillRect(0, 0, RULER_SIZE, canvasHeight);
+  // Décaler les règles pour qu'elles commencent après le bord noir
+  const offset = borderWidth;
   
-  ctx.fillStyle = darkMode ? '#3a3a3a' : '#e0e0e0';
-  ctx.fillRect(0, 0, RULER_SIZE, RULER_SIZE);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(offset, offset, canvasWidth - offset, RULER_SIZE);
+  ctx.fillRect(offset, offset, RULER_SIZE, canvasHeight - offset);
   
-  ctx.fillStyle = darkMode ? '#ffffff' : '#000000';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(offset, offset, RULER_SIZE, RULER_SIZE);
+  
+  ctx.fillStyle = '#1F1F1F';
   ctx.font = '10px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -73,39 +78,41 @@ export const drawRulers = (ctx, canvas, viewport, darkMode, showRulers) => {
        x <= Math.ceil((canvasWidth / 2 - viewport.x) / viewport.zoom / 10) * 10; 
        x += 10) {
     const screenPos = worldToScreen(x, 0, canvas, viewport);
-    if (screenPos.x < RULER_SIZE) continue;
+    // Arrêter avant le bord de droite
+    if (screenPos.x < RULER_SIZE + offset || screenPos.x > canvasWidth - offset) continue;
     
-    ctx.strokeStyle = darkMode ? '#666' : '#999';
+    ctx.strokeStyle = '#1F1F1F';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(screenPos.x, RULER_SIZE);
-    ctx.lineTo(screenPos.x, RULER_SIZE - 5);
+    ctx.moveTo(screenPos.x, offset + RULER_SIZE);
+    ctx.lineTo(screenPos.x, offset + RULER_SIZE - 3);
     ctx.stroke();
     
     if (x % 50 === 0) {
-      ctx.fillText(x.toString(), screenPos.x, RULER_SIZE / 2);
+      ctx.fillText(x.toString(), screenPos.x, offset + RULER_SIZE / 2);
     }
   }
   
   ctx.save();
-  ctx.translate(RULER_SIZE / 2, 0);
+  ctx.translate(offset + RULER_SIZE / 2, offset);
   ctx.rotate(-Math.PI / 2);
   
   for (let y = Math.floor((-canvasHeight / 2 - viewport.y) / viewport.zoom / 10) * 10; 
        y <= Math.ceil((canvasHeight / 2 - viewport.y) / viewport.zoom / 10) * 10; 
        y += 10) {
     const screenPos = worldToScreen(0, y, canvas, viewport);
-    if (screenPos.y < RULER_SIZE) continue;
+    // Arrêter avant le bord du bas
+    if (screenPos.y < RULER_SIZE + offset || screenPos.y > canvasHeight - offset) continue;
     
-    ctx.strokeStyle = darkMode ? '#666' : '#999';
+    ctx.strokeStyle = '#1F1F1F';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(-screenPos.y, RULER_SIZE / 2 - 5);
-    ctx.lineTo(-screenPos.y, RULER_SIZE / 2);
+    ctx.moveTo(-screenPos.y + offset, RULER_SIZE / 2 - 3);
+    ctx.lineTo(-screenPos.y + offset, RULER_SIZE / 2);
     ctx.stroke();
     
     if (y % 50 === 0) {
-      ctx.fillText(y.toString(), -screenPos.y, 0);
+      ctx.fillText(y.toString(), -screenPos.y + offset, 0);
     }
   }
   
@@ -113,7 +120,7 @@ export const drawRulers = (ctx, canvas, viewport, darkMode, showRulers) => {
   
   if (showRulers) {
     const origin = worldToScreen(0, 0, canvas, viewport);
-    ctx.strokeStyle = darkMode ? '#ffffff' : '#000000';
+    ctx.strokeStyle = '#1F1F1F';
     ctx.lineWidth = 2;
     const crossSize = 10;
     ctx.beginPath();
@@ -125,24 +132,28 @@ export const drawRulers = (ctx, canvas, viewport, darkMode, showRulers) => {
   }
 };
 
-export const drawGuides = (ctx, canvas, viewport, guides, showRulers) => {
+export const drawGuides = (ctx, canvas, viewport, guides, showRulers, borderWidth = 10) => {
   const rect = canvas.getBoundingClientRect();
   
+  // Les guides commencent après les règles ET les bordures noires
+  const startOffset = showRulers ? RULER_SIZE + borderWidth : borderWidth;
+  const endOffset = borderWidth;
+  
   guides.forEach(guide => {
-    ctx.strokeStyle = '#00ffff';
+    ctx.strokeStyle = '#E44A33';
     ctx.lineWidth = 1;
     
     if (guide.type === 'horizontal') {
       const screenY = worldToScreen(0, guide.position, canvas, viewport).y;
       ctx.beginPath();
-      ctx.moveTo(showRulers ? RULER_SIZE : 0, screenY);
-      ctx.lineTo(rect.width, screenY);
+      ctx.moveTo(startOffset, screenY);
+      ctx.lineTo(rect.width - endOffset, screenY);
       ctx.stroke();
     } else {
       const screenX = worldToScreen(guide.position, 0, canvas, viewport).x;
       ctx.beginPath();
-      ctx.moveTo(screenX, showRulers ? RULER_SIZE : 0);
-      ctx.lineTo(screenX, rect.height);
+      ctx.moveTo(screenX, startOffset);
+      ctx.lineTo(screenX, rect.height - endOffset);
       ctx.stroke();
     }
   });
@@ -171,10 +182,10 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     ctx.strokeStyle = flashColor;
     ctx.lineWidth = 4;
   } else if (isSelected) {
-    ctx.strokeStyle = '#00aaff';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#E44A33';
+    ctx.lineWidth = 2.5;
   } else {
-    ctx.strokeStyle = el.stroke || (darkMode ? '#ffffff' : '#000000');
+    ctx.strokeStyle = el.stroke || '#2B2B2B';
     ctx.lineWidth = el.strokeWidth || 1.5;
   }
 
@@ -190,8 +201,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.strokeStyle = flashColor;
       ctx.lineWidth = 4;
     } else {
-      ctx.strokeStyle = isArcSelected ? '#ffff00' : (isSelected ? '#00aaff' : (el.stroke || (darkMode ? '#ffffff' : '#000000')));
-      ctx.lineWidth = isArcSelected ? 3 : (isSelected ? 2 : (el.strokeWidth || 1.5));
+      ctx.strokeStyle = isArcSelected ? '#FF8C00' : (isSelected ? '#E44A33' : (el.stroke || '#2B2B2B'));
+      ctx.lineWidth = isArcSelected ? 4 : (isSelected ? 2.5 : (el.strokeWidth || 1.5));
     }
     
     ctx.beginPath();
@@ -203,8 +214,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       const textX = center.x + radius * Math.cos(midAngle) * 1.2;
       const textY = center.y + radius * Math.sin(midAngle) * 1.2;
       const arcLength = Math.abs(el.endAngle - el.startAngle) * el.radius;
-      ctx.fillStyle = darkMode ? '#ffffff' : '#000000';
-      ctx.font = '12px monospace';
+      ctx.fillStyle = '#1F1F1F';
+      ctx.font = 'bold 12px monospace';
       ctx.fillText(`${arcLength.toFixed(1)}mm`, textX, textY);
     }
     
@@ -216,12 +227,12 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ];
       
       controlPoints.forEach((pt, idx) => {
-        ctx.fillStyle = idx === 2 ? '#ff6600' : '#00aaff';
+        ctx.fillStyle = idx === 2 ? '#E44A33' : '#2B2B2B';
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
         ctx.stroke();
       });
     }
@@ -235,8 +246,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.strokeStyle = flashColor;
       ctx.lineWidth = 4;
     } else {
-      ctx.strokeStyle = isLineSelected ? '#ffff00' : (isSelected ? '#00aaff' : (el.stroke || (darkMode ? '#ffffff' : '#000000')));
-      ctx.lineWidth = isLineSelected ? 3 : (isSelected ? 2 : (el.strokeWidth || 1.5));
+      ctx.strokeStyle = isLineSelected ? '#FF8C00' : (isSelected ? '#E44A33' : (el.stroke || '#2B2B2B'));
+      ctx.lineWidth = isLineSelected ? 4 : (isSelected ? 2.5 : (el.strokeWidth || 1.5));
     }
     
     ctx.beginPath();
@@ -248,8 +259,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       const length = Math.sqrt((el.x2 - el.x1) ** 2 + (el.y2 - el.y1) ** 2);
       const midX = (start.x + end.x) / 2;
       const midY = (start.y + end.y) / 2;
-      ctx.fillStyle = darkMode ? '#ffffff' : '#000000';
-      ctx.font = '12px monospace';
+      ctx.fillStyle = '#1F1F1F';
+      ctx.font = 'bold 12px monospace';
       ctx.fillText(`${length.toFixed(1)}mm`, midX + 5, midY - 5);
     }
     
@@ -261,12 +272,12 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ];
       
       controlPoints.forEach(pt => {
-        ctx.fillStyle = '#00aaff';
+        ctx.fillStyle = '#2B2B2B';
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
         ctx.stroke();
       });
     }
@@ -291,8 +302,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         ctx.strokeStyle = '#00ff00';
         ctx.lineWidth = 4;
       } else {
-        ctx.strokeStyle = isEdgeSelected ? '#ffff00' : (isSelected ? '#00aaff' : (el.stroke || (darkMode ? '#ffffff' : '#000000')));
-        ctx.lineWidth = isEdgeSelected ? 3 : (isSelected ? 2 : (el.strokeWidth || 1.5));
+      ctx.strokeStyle = isEdgeSelected ? '#FF8C00' : (isSelected ? '#E44A33' : (el.stroke || '#2B2B2B'));
+      ctx.lineWidth = isEdgeSelected ? 4 : (isSelected ? 2.5 : (el.strokeWidth || 1.5));
       }
       
       ctx.beginPath();
@@ -309,8 +320,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     }
 
     if (isSelected || el === currentElement || showDimensions) {
-      ctx.fillStyle = darkMode ? '#ffffff' : '#000000';
-      ctx.font = '12px monospace';
+      ctx.fillStyle = '#1F1F1F';
+      ctx.font = 'bold 12px monospace';
       ctx.fillText(`${Math.abs(el.width).toFixed(1)}mm`, topLeft.x + width / 2 - 20, topLeft.y - 5);
       ctx.fillText(`${Math.abs(el.height).toFixed(1)}mm`, topLeft.x + width + 5, topLeft.y + height / 2);
     }
@@ -329,12 +340,12 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ];
       
       controlPoints.forEach((pt, idx) => {
-        ctx.fillStyle = idx === 4 ? '#ff6600' : '#00aaff';
+        ctx.fillStyle = idx === 4 ? '#E44A33' : '#2B2B2B';
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
         ctx.stroke();
       });
     }
@@ -362,8 +373,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
           ctx.strokeStyle = '#00ff00';
           ctx.lineWidth = 4;
         } else {
-          ctx.strokeStyle = isThisQuarterSelected ? '#ffff00' : (isSelected ? '#00aaff' : (el.stroke || (darkMode ? '#ffffff' : '#000000')));
-          ctx.lineWidth = isThisQuarterSelected ? 3 : (isSelected ? 2 : (el.strokeWidth || 1.5));
+          ctx.strokeStyle = isThisQuarterSelected ? '#FF8C00' : (isSelected ? '#E44A33' : (el.stroke || '#2B2B2B'));
+          ctx.lineWidth = isThisQuarterSelected ? 4 : (isSelected ? 2.5 : (el.strokeWidth || 1.5));
         }
         
         ctx.beginPath();
@@ -378,8 +389,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     }
 
     if (isSelected || el === currentElement || showDimensions) {
-      ctx.fillStyle = darkMode ? '#ffffff' : '#000000';
-      ctx.font = '12px monospace';
+      ctx.fillStyle = '#1F1F1F';
+      ctx.font = 'bold 12px monospace';
       if (el.radiusX && el.radiusY && Math.abs(el.radiusX - el.radiusY) > 0.1) {
         ctx.fillText(`${(el.radiusX * 2).toFixed(1)}x${(el.radiusY * 2).toFixed(1)}mm`, center.x + radiusX + 5, center.y);
       } else {
@@ -398,12 +409,12 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ];
       
       controlPoints.forEach((pt, idx) => {
-        ctx.fillStyle = idx === 0 ? '#ff6600' : '#00aaff';
+        ctx.fillStyle = idx === 0 ? '#E44A33' : '#2B2B2B';
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
         ctx.stroke();
       });
     }
@@ -450,7 +461,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
 
           // Texte avant la sélection (normal)
           if (textBeforeSel) {
-            ctx.fillStyle = el.fill || (darkMode ? '#ffffff' : '#000000');
+            ctx.fillStyle = el.fill || '#1F1F1F';
             ctx.fillText(textBeforeSel, currentX, lineY);
             currentX += beforeSelWidth;
           }
@@ -471,7 +482,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
 
           // Texte après la sélection (normal)
           if (textAfterSel) {
-            ctx.fillStyle = el.fill || (darkMode ? '#ffffff' : '#000000');
+            ctx.fillStyle = el.fill || '#1F1F1F';
             ctx.fillText(textAfterSel, currentX, lineY);
           }
         } else {
@@ -484,7 +495,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       }
     } else {
       // Rendu normal du texte
-      ctx.fillStyle = isFlashing ? flashColor : (isSelected || isEditing ? '#00aaff' : (el.fill || (darkMode ? '#ffffff' : '#000000')));
+      ctx.fillStyle = isFlashing ? flashColor : (isSelected || isEditing ? '#E44A33' : (el.fill || '#1F1F1F'));
       lines.forEach((line, index) => {
         ctx.fillText(line, pos.x, pos.y - (lines.length - 1 - index) * lineHeight);
       });
@@ -499,9 +510,9 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       const textHeight = lines.length * lineHeight;
 
       // Rectangle de sélection en pointillés
-      ctx.strokeStyle = '#00aaff';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = '#E44A33';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
       ctx.strokeRect(pos.x, pos.y - textHeight, textWidth, textHeight);
       ctx.setLineDash([]);
 
@@ -518,12 +529,12 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ];
 
       corners.forEach((pt, idx) => {
-        ctx.fillStyle = '#00aaff';
+        ctx.fillStyle = '#2B2B2B';
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
         ctx.stroke();
       });
     }
@@ -565,7 +576,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         const shouldShow = Math.floor(Date.now() / blinkSpeed) % 2 === 0;
 
         if (shouldShow) {
-          ctx.strokeStyle = '#ffffff';
+          ctx.strokeStyle = '#E44A33';
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.moveTo(cursorX, cursorY - el.fontSize);
@@ -592,7 +603,7 @@ export const drawSnapPoint = (ctx, canvas, viewport, snapPoint, selectedIds) => 
   
   let color = '#00ff00';
   if (snapPoint.type === 'guide' || snapPoint.isGuide) {
-    color = '#ff00ff';
+    color = '#1F1F1F';
   } else if (isSpecialPoint && !isFromSelectedElement) {
     color = '#ff0000';
   }
@@ -607,9 +618,9 @@ export const drawSnapPoint = (ctx, canvas, viewport, snapPoint, selectedIds) => 
 export const drawSelectionBox = (ctx, selectionBox) => {
   if (!selectionBox) return;
   
-  ctx.strokeStyle = '#00aaff';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([5, 5]);
+  ctx.strokeStyle = '#E44A33';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
   ctx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.width, selectionBox.height);
   ctx.setLineDash([]);
 };
@@ -629,12 +640,10 @@ export const drawWorkArea = (ctx, canvas, viewport, workArea) => {
   const screenWidth = bottomRight.x - topLeft.x;
   const screenHeight = bottomRight.y - topLeft.y;
   
-  // Dessiner le rectangle de la zone de travail
-  ctx.strokeStyle = '#ff9900';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([10, 5]);
+  // Dessiner le rectangle de la zone de travail (ligne fine continue)
+  ctx.strokeStyle = '#E44A33';
+  ctx.lineWidth = 1;
   ctx.strokeRect(topLeft.x, topLeft.y, screenWidth, screenHeight);
-  ctx.setLineDash([]);
   
   // Ajouter une ombre légère pour indiquer la zone hors limites
   ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
@@ -662,8 +671,8 @@ export const drawWorkArea = (ctx, canvas, viewport, workArea) => {
   
   // Ajouter un label "Zone de travail"
   ctx.save();
-  ctx.font = 'bold 14px Arial';
-  ctx.fillStyle = '#ff9900';
+  ctx.font = 'bold 14px Inter';
+  ctx.fillStyle = '#E44A33';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
   
@@ -684,7 +693,7 @@ export const drawWorkArea = (ctx, canvas, viewport, workArea) => {
   );
   
   // Texte
-  ctx.fillStyle = '#ff9900';
+  ctx.fillStyle = '#E44A33';
   ctx.fillText(labelText, centerX, labelY);
   
   ctx.restore();

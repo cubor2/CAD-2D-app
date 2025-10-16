@@ -5,6 +5,7 @@ import PropertiesPanel from './components/PropertiesPanel';
 import TopControls from './components/TopControls';
 import ContextMenu from './components/ContextMenu';
 import MenuBar from './components/MenuBar';
+import DesignSystem from './components/DesignSystem';
 import { useViewport } from './hooks/useViewport';
 import { useElements } from './hooks/useElements';
 import { useSelection } from './hooks/useSelection';
@@ -48,7 +49,7 @@ const CADEditor = () => {
   const [textSelectionEnd, setTextSelectionEnd] = useState(0);
   const [isDraggingTextSelection, setIsDraggingTextSelection] = useState(false);
   
-  const [clipboard, setClipboard] = useState([]);
+  const [clipboard, setClipboard] = useState({ elements: [], groups: [] });
   const [pasteCount, setPasteCount] = useState(0);
   
   const [contextMenu, setContextMenu] = useState(null);
@@ -65,6 +66,8 @@ const CADEditor = () => {
     height: 300,
     visible: true
   });
+  
+  const [showDesignSystem, setShowDesignSystem] = useState(false);
   
   const { viewport, isPanning, handlePan, handleZoom, startPan, endPan } = useViewport();
   
@@ -84,6 +87,7 @@ const CADEditor = () => {
     selectedIds,
     setSelectedIds,
     groups,
+    setGroups,
     flashingIds,
     flashType,
     createGroup,
@@ -363,27 +367,36 @@ const CADEditor = () => {
   const handleCopy = useCallback(() => {
     if (selectedIds.length > 0) {
       const selectedElements = elements.filter(el => selectedIds.includes(el.id));
-      setClipboard(selectedElements);
+      const selectedGroups = groups.filter(group => 
+        group.elementIds.some(id => selectedIds.includes(id))
+      );
+      setClipboard({ elements: selectedElements, groups: selectedGroups });
       setPasteCount(0);
     }
-  }, [selectedIds, elements]);
+  }, [selectedIds, elements, groups]);
 
   const handleCut = useCallback(() => {
     if (selectedIds.length > 0) {
       const selectedElements = elements.filter(el => selectedIds.includes(el.id));
-      setClipboard(selectedElements);
+      const selectedGroups = groups.filter(group => 
+        group.elementIds.some(id => selectedIds.includes(id))
+      );
+      setClipboard({ elements: selectedElements, groups: selectedGroups });
       setPasteCount(0);
       deleteElements(selectedIds);
       setSelectedIds([]);
     }
-  }, [selectedIds, elements, deleteElements, setSelectedIds]);
+  }, [selectedIds, elements, groups, deleteElements, setSelectedIds]);
 
   const handlePaste = useCallback((inPlace) => {
-    if (clipboard.length > 0) {
+    if (clipboard.elements.length > 0) {
       const offset = inPlace ? 0 : (pasteCount + 1) * 10;
       
-      const newElements = clipboard.map(el => {
-        const newEl = { ...el, id: getNextId() };
+      const idMapping = {};
+      const newElements = clipboard.elements.map(el => {
+        const newId = getNextId();
+        idMapping[el.id] = newId;
+        const newEl = { ...el, id: newId };
         if (el.type === 'line') {
           newEl.x1 += offset;
           newEl.y1 += offset;
@@ -409,11 +422,20 @@ const CADEditor = () => {
       updateElements(updatedElements);
       setSelectedIds(newElements.map(el => el.id));
       
+      const newGroups = clipboard.groups.map(group => ({
+        id: Date.now() + Math.random(),
+        elementIds: group.elementIds.map(oldId => idMapping[oldId]).filter(Boolean)
+      })).filter(group => group.elementIds.length >= 2);
+      
+      if (newGroups.length > 0) {
+        setGroups(prev => [...prev, ...newGroups]);
+      }
+      
       if (!inPlace) {
         setPasteCount(prev => prev + 1);
       }
     }
-  }, [clipboard, pasteCount, elements, getNextId, updateElements, setSelectedIds]);
+  }, [clipboard, pasteCount, elements, getNextId, updateElements, setSelectedIds, setGroups]);
 
   const handleDelete = useCallback(() => {
     if (tool === 'edit' && selectedEdge) {
@@ -993,6 +1015,8 @@ const CADEditor = () => {
     }
     
     if (showRulers) {
+      const borderWidth = 10;
+      const rulerZoneSize = RULER_SIZE + borderWidth;
       const guideClickDist = 5;
       for (const guide of guides) {
         if (guide.type === 'horizontal') {
@@ -1010,12 +1034,12 @@ const CADEditor = () => {
         }
       }
       
-      if (canvasX < RULER_SIZE && canvasY > RULER_SIZE) {
+      if (canvasX >= borderWidth && canvasX < rulerZoneSize && canvasY > rulerZoneSize) {
         const newGuide = { type: 'vertical', position: point.x, id: Date.now() };
         setGuides(prev => [...prev, newGuide]);
         setIsDraggingGuide(newGuide.id);
         return;
-      } else if (canvasY < RULER_SIZE && canvasX > RULER_SIZE) {
+      } else if (canvasY >= borderWidth && canvasY < rulerZoneSize && canvasX > rulerZoneSize) {
         const newGuide = { type: 'horizontal', position: point.y, id: Date.now() };
         setGuides(prev => [...prev, newGuide]);
         setIsDraggingGuide(newGuide.id);
@@ -1444,7 +1468,7 @@ const CADEditor = () => {
         fontFamily: 'Arial',
         fontWeight: 'normal',
         fontStyle: 'normal',
-        fill: darkMode ? '#ffffff' : '#000000'
+        fill: '#000000'
       };
       updateElements([...elements, newText]);
       setSelectedIds([newText.id]);
@@ -1877,15 +1901,17 @@ const CADEditor = () => {
         if (guide) {
           const canvas = getCanvasRef().current;
           const rect = canvas.getBoundingClientRect();
+          const borderWidth = 10;
+          const rulerZoneSize = RULER_SIZE + borderWidth;
           
           if (guide.type === 'horizontal') {
             const screenY = worldToScreenWrapper(0, guide.position).y;
-            if (screenY < RULER_SIZE) {
+            if (screenY >= borderWidth && screenY < rulerZoneSize) {
               setGuides(prev => prev.filter(g => g.id !== isDraggingGuide));
             }
           } else {
             const screenX = worldToScreenWrapper(guide.position, 0).x;
-            if (screenX < RULER_SIZE) {
+            if (screenX >= borderWidth && screenX < rulerZoneSize) {
               setGuides(prev => prev.filter(g => g.id !== isDraggingGuide));
             }
           }
@@ -1977,94 +2003,101 @@ const CADEditor = () => {
   }, [handleZoom]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white">
-      <MenuBar
-        onNew={handleNew}
-        onOpen={handleOpen}
-        onSave={handleSave}
-        onSaveAs={handleSaveAs}
-        onExport={handleExport}
-        onUndo={undo}
-        onRedo={redo}
-        onCut={handleCut}
-        onCopy={handleCopy}
-        onPaste={handlePaste}
-        onDelete={handleDelete}
-        onGroup={createGroup}
-        onUngroup={ungroupSelected}
-        hasSelection={selectedIds.length > 0}
-        hasMultipleSelection={selectedIds.length >= 2}
+    <div className="flex h-screen bg-drawhard-beige text-drawhard-text">
+      <div className="flex flex-col flex-1">
+        <MenuBar
+          onNew={handleNew}
+          onOpen={handleOpen}
+          onSave={handleSave}
+          onSaveAs={handleSaveAs}
+          onExport={handleExport}
+          onUndo={undo}
+          onRedo={redo}
+          onCut={handleCut}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          onDelete={handleDelete}
+          onGroup={createGroup}
+          onUngroup={ungroupSelected}
+          hasSelection={selectedIds.length > 0}
+          hasMultipleSelection={selectedIds.length >= 2}
+          onOpenDesignSystem={() => setShowDesignSystem(true)}
+        />
+        
+        <div className="flex flex-1">
+          <Toolbar 
+            tool={tool} 
+            onToolChange={handleToolChange}
+            onClearSelectedEdge={() => setSelectedEdge(null)}
+          />
+
+          <div className="flex-1 relative">
+            <TopControls
+              snapToGrid={snapToGrid}
+              setSnapToGrid={setSnapToGrid}
+              snapToElements={snapToElements}
+              setSnapToElements={setSnapToElements}
+              showDimensions={showDimensions}
+              setShowDimensions={setShowDimensions}
+              showRulers={showRulers}
+              setShowRulers={setShowRulers}
+              viewport={viewport}
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+            />
+            
+            <Canvas
+              viewport={viewport}
+              elements={elements}
+              selectedIds={selectedIds}
+              currentElement={currentElement}
+              snapPoint={snapPoint}
+              selectionBox={selectionBox}
+              drawOrigin={drawOrigin}
+              selectedEdge={selectedEdge}
+              showDimensions={showDimensions}
+              darkMode={darkMode}
+              showRulers={showRulers}
+              guides={guides}
+              flashingIds={flashingIds}
+              flashType={flashType}
+              tool={tool}
+              editingTextId={editingTextId}
+              textCursorPosition={textCursorPosition}
+              textSelectionStart={textSelectionStart}
+              textSelectionEnd={textSelectionEnd}
+              workArea={workArea}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onWheel={handleWheel}
+              onContextMenu={(e) => e.preventDefault()}
+              cursor={cursor}
+            />
+            
+            <ContextMenu
+              contextMenu={contextMenu}
+              selectedIds={selectedIds}
+              groups={groups}
+              onGroup={createGroup}
+              onUngroup={ungroupSelected}
+              onClose={() => setContextMenu(null)}
+            />
+          </div>
+        </div>
+      </div>
+      
+      <PropertiesPanel
+        selectedIds={selectedIds}
+        elements={elements}
+        onUpdateElement={updateElement}
+        workArea={workArea}
+        onWorkAreaChange={setWorkArea}
       />
       
-      <div className="flex flex-1">
-        <Toolbar 
-          tool={tool} 
-          onToolChange={handleToolChange}
-          onClearSelectedEdge={() => setSelectedEdge(null)}
-        />
-
-        <div className="flex-1 relative">
-          <TopControls
-            snapToGrid={snapToGrid}
-            setSnapToGrid={setSnapToGrid}
-            snapToElements={snapToElements}
-            setSnapToElements={setSnapToElements}
-            showDimensions={showDimensions}
-            setShowDimensions={setShowDimensions}
-            showRulers={showRulers}
-            setShowRulers={setShowRulers}
-            viewport={viewport}
-            darkMode={darkMode}
-            setDarkMode={setDarkMode}
-          />
-          
-          <Canvas
-            viewport={viewport}
-            elements={elements}
-            selectedIds={selectedIds}
-            currentElement={currentElement}
-            snapPoint={snapPoint}
-            selectionBox={selectionBox}
-            drawOrigin={drawOrigin}
-            selectedEdge={selectedEdge}
-            showDimensions={showDimensions}
-            darkMode={darkMode}
-            showRulers={showRulers}
-            guides={guides}
-            flashingIds={flashingIds}
-            flashType={flashType}
-            tool={tool}
-            editingTextId={editingTextId}
-            textCursorPosition={textCursorPosition}
-            textSelectionStart={textSelectionStart}
-            textSelectionEnd={textSelectionEnd}
-            workArea={workArea}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onWheel={handleWheel}
-            onContextMenu={(e) => e.preventDefault()}
-            cursor={cursor}
-          />
-          
-          <ContextMenu
-            contextMenu={contextMenu}
-            selectedIds={selectedIds}
-            groups={groups}
-            onGroup={createGroup}
-            onUngroup={ungroupSelected}
-            onClose={() => setContextMenu(null)}
-          />
-        </div>
-
-        <PropertiesPanel
-          selectedIds={selectedIds}
-          elements={elements}
-          onUpdateElement={updateElement}
-          workArea={workArea}
-          onWorkAreaChange={setWorkArea}
-        />
-      </div>
+      {showDesignSystem && (
+        <DesignSystem onClose={() => setShowDesignSystem(false)} />
+      )}
     </div>
   );
 };
