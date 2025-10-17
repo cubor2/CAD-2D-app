@@ -7,6 +7,7 @@ const MenuBar = React.memo(({
   onSave, 
   onSaveAs, 
   onExport,
+  onLaserExport,
   onUndo,
   onRedo,
   onCut,
@@ -90,6 +91,11 @@ const MenuBar = React.memo(({
                 { label: 'PNG', onClick: () => handleMenuAction(() => onExport('png')) },
                 { label: 'DXF', onClick: () => handleMenuAction(() => onExport('dxf')) },
               ]}
+            />
+            <MenuItem 
+              label="Exporter pour découpe laser..." 
+              shortcut=""
+              onClick={() => handleMenuAction(onLaserExport)}
             />
             <div className="h-px bg-drawhard-grid my-1" />
             <MenuItem 

@@ -223,7 +223,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       const arcLength = Math.abs(el.endAngle - el.startAngle) * (el.radiusX || el.radius);
       ctx.fillStyle = '#1F1F1F';
       ctx.font = 'bold 12px monospace';
-      ctx.fillText(`${arcLength.toFixed(1)}mm`, textX, textY);
+      ctx.fillText(`${Math.round(arcLength)}mm`, textX, textY);
     }
     
     if (isSelected) {
@@ -272,7 +272,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       const midY = (start.y + end.y) / 2;
       ctx.fillStyle = '#1F1F1F';
       ctx.font = 'bold 12px monospace';
-      ctx.fillText(`${length.toFixed(1)}mm`, midX + 5, midY - 5);
+      ctx.fillText(`${Math.round(length)}mm`, midX + 5, midY - 5);
     }
     
     if (isSelected) {
@@ -318,7 +318,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       const midY = (start.y + end.y) / 2;
       ctx.fillStyle = '#1F1F1F';
       ctx.font = 'bold 12px monospace';
-      ctx.fillText(`~${length.toFixed(1)}mm`, midX + 5, midY - 5);
+      ctx.fillText(`~${Math.round(length)}mm`, midX + 5, midY - 5);
     }
     
     if (isSelected) {
@@ -393,8 +393,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     if (showDimensions) {
       ctx.fillStyle = '#1F1F1F';
       ctx.font = 'bold 12px monospace';
-      ctx.fillText(`${Math.abs(el.width).toFixed(1)}mm`, topLeft.x + width / 2 - 20, topLeft.y - 5);
-      ctx.fillText(`${Math.abs(el.height).toFixed(1)}mm`, topLeft.x + width + 5, topLeft.y + height / 2);
+      ctx.fillText(`${Math.round(Math.abs(el.width))}mm`, topLeft.x + width / 2 - 20, topLeft.y - 5);
+      ctx.fillText(`${Math.round(Math.abs(el.height))}mm`, topLeft.x + width + 5, topLeft.y + height / 2);
     }
     
     if (isSelected) {

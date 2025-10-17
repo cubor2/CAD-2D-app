@@ -165,6 +165,79 @@ const DesignSystem = ({ onClose }) => {
           </section>
 
           <section>
+            <h3 className="text-lg font-bold uppercase tracking-extra-wide mb-4 border-b-2 border-drawhard-dark pb-2">Standards PropertiesPanel</h3>
+            <div className="space-y-3 text-sm">
+              <div>
+                <strong className="block mb-1">Inputs numériques (dimensions en mm)</strong>
+                <ul className="space-y-1 ml-4 text-xs">
+                  <li>• Hauteur : py-1 (4px haut/bas)</li>
+                  <li>• Bordure : border (1px) noir</li>
+                  <li>• Focus : border-drawhard-dark (reste noir, pas rouge)</li>
+                  <li>• Valeurs : Entiers uniquement (Math.round)</li>
+                  <li>• Step : 1mm (pas de décimales)</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="block mb-1">Boutons d'action</strong>
+                <ul className="space-y-1 ml-4 text-xs">
+                  <li>• Hauteur : py-1.5 (6px haut/bas) - STANDARD</li>
+                  <li>• Padding horizontal : px-3 (12px)</li>
+                  <li>• Bordure : border (1px) noir</li>
+                  <li>• Icônes : 16px</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="block mb-1">Labels</strong>
+                <ul className="space-y-1 ml-4 text-xs">
+                  <li>• Taille : text-xs</li>
+                  <li>• Couleur : text-drawhard-hover</li>
+                  <li>• Espacement sous label : mb-1 (4px) - STANDARD</li>
+                  <li>• Alignement : text-left</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="block mb-1">Sections</strong>
+                <ul className="space-y-1 ml-4 text-xs">
+                  <li>• Titre section : text-xs font-bold uppercase tracking-wide</li>
+                  <li>• Compteur éléments : À droite du titre (justify-between)</li>
+                  <li>• Espacement après titre : mb-3 (12px)</li>
+                  <li>• Padding section : pt-3 pb-2 px-4</li>
+                  <li>• Séparateur : border-t-2</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="block mb-1">Éléments spéciaux</strong>
+                <ul className="space-y-1 ml-4 text-xs">
+                  <li>• Cadenas proportions : Pas de bordure, juste icône</li>
+                  <li>• Dimensions avec cadenas : Sélection simple ET multiple</li>
+                  <li>• Layout dimensions : flex gap-1, cadenas au milieu</li>
+                  <li>• Espacement entre éléments : space-y-2 (8px)</li>
+                  <li>• Gap dans grid : gap-2 (8px)</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="block mb-1">Organisation PropertiesPanel</strong>
+                <ul className="space-y-1 ml-4 text-xs">
+                  <li>• Bloc unique "Transformation" (pas de "Sélection")</li>
+                  <li>• Compteur éléments à droite du titre</li>
+                  <li>• Dimensions en haut (sélection simple ou multiple)</li>
+                  <li>• Rotation et Symétrie en dessous</li>
+                  <li>• Détails spécifiques après (ligne, arc, texte...)</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="block mb-1">Cotes sur canvas</strong>
+                <ul className="space-y-1 ml-4 text-xs">
+                  <li>• Affichage : Millimètres entiers uniquement (Math.round)</li>
+                  <li>• Format : "XXmm" (sans décimales)</li>
+                  <li>• Police : bold 12px monospace</li>
+                  <li>• Couleur : #1F1F1F</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section>
             <h3 className="text-lg font-bold uppercase tracking-extra-wide mb-4 border-b-2 border-drawhard-dark pb-2">États & Interactions</h3>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-3">

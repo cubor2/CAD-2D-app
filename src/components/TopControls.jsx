@@ -54,7 +54,7 @@ const TopControls = React.memo(({
       <span className="text-drawhard-dark font-bold">|</span>
       <span className="text-drawhard-hover">unité = 1mm</span>
       <span className="text-drawhard-dark font-bold">|</span>
-      <span className="font-mono font-bold">Zoom: {((viewport.zoom / 3.779527559055118) * 100).toFixed(0)}%</span>
+      <span className="font-mono">Zoom: {((viewport.zoom / 3.779527559055118) * 100).toFixed(0)}%</span>
     </div>
   );
 });

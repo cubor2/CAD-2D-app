@@ -1,5 +1,5 @@
 import { SNAP_DISTANCE, EDGE_SNAP_DISTANCE, GUIDE_SNAP_DISTANCE } from '../constants';
-import { pointToLineSegment, getElementSnapPoints } from './geometry';
+import { pointToLineSegment, getElementSnapPoints, isAngleBetween } from './geometry';
 
 export const findGuideSnapPosition = (guideType, currentPos, elements, viewport) => {
   const SNAP_DIST = 8 / viewport.zoom;
@@ -50,10 +50,12 @@ export const findGuideSnapPosition = (guideType, currentPos, elements, viewport)
         positions.push(el.cx, el.cx + el.radius, el.cx - el.radius);
       }
     } else if (el.type === 'arc') {
+      const radiusX = el.radiusX || el.radius;
+      const radiusY = el.radiusY || el.radius;
       if (guideType === 'horizontal') {
-        positions.push(el.cy, el.cy + el.radius * Math.sin(el.startAngle), el.cy + el.radius * Math.sin(el.endAngle));
+        positions.push(el.cy, el.cy + radiusY * Math.sin(el.startAngle), el.cy + radiusY * Math.sin(el.endAngle));
       } else {
-        positions.push(el.cx, el.cx + el.radius * Math.cos(el.startAngle), el.cx + el.radius * Math.cos(el.endAngle));
+        positions.push(el.cx, el.cx + radiusX * Math.cos(el.startAngle), el.cx + radiusX * Math.cos(el.endAngle));
       }
     }
     
@@ -151,51 +153,76 @@ export const findSnapPoints = (point, elements, excludeIds, viewport) => {
         }
       });
     } else if (el.type === 'circle') {
+      const radiusX = el.radiusX || el.radius;
+      const radiusY = el.radiusY || el.radius;
+      
       snapPoints.push(
         { x: el.cx, y: el.cy, type: 'center', priority: 18, elementId: el.id },
-        { x: el.cx + el.radius, y: el.cy, type: 'endpoint', priority: 20, elementId: el.id },
-        { x: el.cx - el.radius, y: el.cy, type: 'endpoint', priority: 20, elementId: el.id },
-        { x: el.cx, y: el.cy + el.radius, type: 'endpoint', priority: 20, elementId: el.id },
-        { x: el.cx, y: el.cy - el.radius, type: 'endpoint', priority: 20, elementId: el.id }
+        { x: el.cx + radiusX, y: el.cy, type: 'endpoint', priority: 20, elementId: el.id },
+        { x: el.cx - radiusX, y: el.cy, type: 'endpoint', priority: 20, elementId: el.id },
+        { x: el.cx, y: el.cy + radiusY, type: 'endpoint', priority: 20, elementId: el.id },
+        { x: el.cx, y: el.cy - radiusY, type: 'endpoint', priority: 20, elementId: el.id }
       );
+      
+      // Snap sur le bord du cercle/ellipse
+      const dx = point.x - el.cx;
+      const dy = point.y - el.cy;
+      const angleToPoint = Math.atan2(dy, dx);
+      
+      // Calcul de la distance à l'ellipse
+      const distToCenter = Math.sqrt(dx * dx + dy * dy);
+      const cosAngle = Math.cos(angleToPoint);
+      const sinAngle = Math.sin(angleToPoint);
+      const radiusAtAngle = (radiusX * radiusY) / Math.sqrt((radiusY * cosAngle) ** 2 + (radiusX * sinAngle) ** 2);
+      const distToEllipse = Math.abs(distToCenter - radiusAtAngle);
+      
+      if (distToEllipse < edgeSnapDist) {
+        const projX = el.cx + radiusAtAngle * cosAngle;
+        const projY = el.cy + radiusAtAngle * sinAngle;
+        snapPoints.push({ x: projX, y: projY, type: 'edge', priority: 3, distance: distToEllipse, elementId: el.id });
+      }
     } else if (el.type === 'arc') {
+      const radiusX = el.radiusX || el.radius;
+      const radiusY = el.radiusY || el.radius;
+      
+      // Calcul des endpoints avec support ellipse
+      const startCos = Math.cos(el.startAngle);
+      const startSin = Math.sin(el.startAngle);
+      const endCos = Math.cos(el.endAngle);
+      const endSin = Math.sin(el.endAngle);
+      
       snapPoints.push(
-        { x: el.cx + el.radius * Math.cos(el.startAngle), y: el.cy + el.radius * Math.sin(el.startAngle), type: 'endpoint', priority: 20, elementId: el.id },
-        { x: el.cx + el.radius * Math.cos(el.endAngle), y: el.cy + el.radius * Math.sin(el.endAngle), type: 'endpoint', priority: 20, elementId: el.id }
+        { x: el.cx + radiusX * startCos, y: el.cy + radiusY * startSin, type: 'endpoint', priority: 20, elementId: el.id },
+        { x: el.cx + radiusX * endCos, y: el.cy + radiusY * endSin, type: 'endpoint', priority: 20, elementId: el.id }
       );
       
       snapPoints.push(
         { x: el.cx, y: el.cy, type: 'center', priority: 18, elementId: el.id }
       );
       
+      // Point milieu avec support ellipse
       const midAngle = (el.startAngle + el.endAngle) / 2;
+      const midCos = Math.cos(midAngle);
+      const midSin = Math.sin(midAngle);
       snapPoints.push(
-        { x: el.cx + el.radius * Math.cos(midAngle), y: el.cy + el.radius * Math.sin(midAngle), type: 'midpoint', priority: 15, elementId: el.id }
+        { x: el.cx + radiusX * midCos, y: el.cy + radiusY * midSin, type: 'midpoint', priority: 15, elementId: el.id }
       );
       
+      // Snap sur le bord de l'arc avec support ellipse
       const dx = point.x - el.cx;
       const dy = point.y - el.cy;
       const angleToPoint = Math.atan2(dy, dx);
       
-      let normAngle = angleToPoint < 0 ? angleToPoint + Math.PI * 2 : angleToPoint;
-      let normStart = el.startAngle < 0 ? el.startAngle + Math.PI * 2 : el.startAngle;
-      let normEnd = el.endAngle < 0 ? el.endAngle + Math.PI * 2 : el.endAngle;
-      
-      if (normStart > normEnd) {
-        normEnd += Math.PI * 2;
-      }
-      
-      if (normAngle < normStart) {
-        normAngle += Math.PI * 2;
-      }
-      
-      if (normAngle >= normStart && normAngle <= normEnd) {
+      if (isAngleBetween(angleToPoint, el.startAngle, el.endAngle)) {
         const distToCenter = Math.sqrt(dx * dx + dy * dy);
-        const distToArc = Math.abs(distToCenter - el.radius);
+        const cosAngle = Math.cos(angleToPoint);
+        const sinAngle = Math.sin(angleToPoint);
+        const radiusAtAngle = (radiusX * radiusY) / Math.sqrt((radiusY * cosAngle) ** 2 + (radiusX * sinAngle) ** 2);
+        const distToArc = Math.abs(distToCenter - radiusAtAngle);
         
         if (distToArc < edgeSnapDist) {
-          const projX = el.cx + el.radius * Math.cos(angleToPoint);
-          const projY = el.cy + el.radius * Math.sin(angleToPoint);
+          const projX = el.cx + radiusAtAngle * cosAngle;
+          const projY = el.cy + radiusAtAngle * sinAngle;
           snapPoints.push({ x: projX, y: projY, type: 'edge', priority: 3, distance: distToArc, elementId: el.id });
         }
       }

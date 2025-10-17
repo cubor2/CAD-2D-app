@@ -6,6 +6,7 @@ import TopControls from './components/TopControls';
 import ContextMenu from './components/ContextMenu';
 import MenuBar from './components/MenuBar';
 import DesignSystem from './components/DesignSystem';
+import LaserExportModal from './components/LaserExportModal';
 import { useViewport } from './hooks/useViewport';
 import { useElements } from './hooks/useElements';
 import { useSelection } from './hooks/useSelection';
@@ -15,6 +16,7 @@ import { snapToGridFn, pointToLineDistance, isAngleBetween } from './utils/geome
 import { findSnapPoints, findGuideSnapPosition, applyMultiPointSnap } from './utils/snap';
 import { RULER_SIZE, GRID_SIZE, GUIDE_SNAP_DISTANCE } from './constants';
 import { importSVG } from './utils/svgImporter';
+import { exportForLaser } from './utils/laserExporter';
 
 const CADEditor = () => {
   const canvasRef = useRef(null);
@@ -69,6 +71,7 @@ const CADEditor = () => {
   });
   
   const [showDesignSystem, setShowDesignSystem] = useState(false);
+  const [showLaserExportModal, setShowLaserExportModal] = useState(false);
   
   const { viewport, isPanning, handlePan, handleZoom, startPan, endPan } = useViewport();
   
@@ -579,6 +582,233 @@ const CADEditor = () => {
     }));
   }, [selectedIds, selectedEdge, tool, setElements]);
 
+  const handleRotate = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    
+    const selectedElements = elements.filter(e => selectedIds.includes(e.id));
+    let centerX = 0, centerY = 0;
+    
+    selectedElements.forEach(el => {
+      if (el.type === 'line') {
+        centerX += (el.x1 + el.x2) / 2;
+        centerY += (el.y1 + el.y2) / 2;
+      } else if (el.type === 'rectangle') {
+        centerX += el.x + el.width / 2;
+        centerY += el.y + el.height / 2;
+      } else if (el.type === 'circle') {
+        centerX += el.cx;
+        centerY += el.cy;
+      } else if (el.type === 'arc') {
+        centerX += el.cx;
+        centerY += el.cy;
+      } else if (el.type === 'curve') {
+        centerX += (el.x1 + el.x2) / 2;
+        centerY += (el.y1 + el.y2) / 2;
+      } else if (el.type === 'text') {
+        centerX += el.x;
+        centerY += el.y;
+      }
+    });
+    
+    centerX /= selectedElements.length;
+    centerY /= selectedElements.length;
+    
+    const angle = Math.PI / 4; // 45 degrés
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    
+    setElements(prev => prev.map(el => {
+      if (!selectedIds.includes(el.id)) return el;
+      
+      if (el.type === 'line') {
+        const dx1 = el.x1 - centerX;
+        const dy1 = el.y1 - centerY;
+        const dx2 = el.x2 - centerX;
+        const dy2 = el.y2 - centerY;
+        return {
+          ...el,
+          x1: centerX + dx1 * cos - dy1 * sin,
+          y1: centerY + dx1 * sin + dy1 * cos,
+          x2: centerX + dx2 * cos - dy2 * sin,
+          y2: centerY + dx2 * sin + dy2 * cos
+        };
+      } else if (el.type === 'rectangle') {
+        const oldCenterX = el.x + el.width / 2;
+        const oldCenterY = el.y + el.height / 2;
+        const dx = oldCenterX - centerX;
+        const dy = oldCenterY - centerY;
+        const newCenterX = centerX + dx * cos - dy * sin;
+        const newCenterY = centerY + dx * sin + dy * cos;
+        return {
+          ...el,
+          x: newCenterX - el.height / 2,
+          y: newCenterY - el.width / 2,
+          width: el.height,
+          height: el.width
+        };
+      } else if (el.type === 'circle') {
+        const dx = el.cx - centerX;
+        const dy = el.cy - centerY;
+        return {
+          ...el,
+          cx: centerX + dx * cos - dy * sin,
+          cy: centerY + dx * sin + dy * cos
+        };
+      } else if (el.type === 'arc') {
+        const dx = el.cx - centerX;
+        const dy = el.cy - centerY;
+        return {
+          ...el,
+          cx: centerX + dx * cos - dy * sin,
+          cy: centerY + dx * sin + dy * cos,
+          startAngle: el.startAngle + angle,
+          endAngle: el.endAngle + angle
+        };
+      } else if (el.type === 'curve') {
+        const dx1 = el.x1 - centerX;
+        const dy1 = el.y1 - centerY;
+        const dx2 = el.x2 - centerX;
+        const dy2 = el.y2 - centerY;
+        const dxcp = el.cpx - centerX;
+        const dycp = el.cpy - centerY;
+        return {
+          ...el,
+          x1: centerX + dx1 * cos - dy1 * sin,
+          y1: centerY + dx1 * sin + dy1 * cos,
+          x2: centerX + dx2 * cos - dy2 * sin,
+          y2: centerY + dx2 * sin + dy2 * cos,
+          cpx: centerX + dxcp * cos - dycp * sin,
+          cpy: centerY + dxcp * sin + dycp * cos
+        };
+      }
+      return el;
+    }));
+  }, [selectedIds, elements, setElements]);
+
+  const handleFlipHorizontal = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    
+    const selectedElements = elements.filter(e => selectedIds.includes(e.id));
+    let centerX = 0;
+    
+    selectedElements.forEach(el => {
+      if (el.type === 'line') {
+        centerX += (el.x1 + el.x2) / 2;
+      } else if (el.type === 'rectangle') {
+        centerX += el.x + el.width / 2;
+      } else if (el.type === 'circle') {
+        centerX += el.cx;
+      } else if (el.type === 'arc') {
+        centerX += el.cx;
+      } else if (el.type === 'curve') {
+        centerX += (el.x1 + el.x2) / 2;
+      } else if (el.type === 'text') {
+        centerX += el.x;
+      }
+    });
+    
+    centerX /= selectedElements.length;
+    
+    setElements(prev => prev.map(el => {
+      if (!selectedIds.includes(el.id)) return el;
+      
+      if (el.type === 'line') {
+        return {
+          ...el,
+          x1: 2 * centerX - el.x1,
+          x2: 2 * centerX - el.x2
+        };
+      } else if (el.type === 'rectangle') {
+        return {
+          ...el,
+          x: 2 * centerX - el.x - el.width
+        };
+      } else if (el.type === 'circle') {
+        return {
+          ...el,
+          cx: 2 * centerX - el.cx
+        };
+      } else if (el.type === 'arc') {
+        return {
+          ...el,
+          cx: 2 * centerX - el.cx,
+          startAngle: Math.PI - el.endAngle,
+          endAngle: Math.PI - el.startAngle
+        };
+      } else if (el.type === 'curve') {
+        return {
+          ...el,
+          x1: 2 * centerX - el.x1,
+          x2: 2 * centerX - el.x2,
+          cpx: 2 * centerX - el.cpx
+        };
+      }
+      return el;
+    }));
+  }, [selectedIds, elements, setElements]);
+
+  const handleFlipVertical = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    
+    const selectedElements = elements.filter(e => selectedIds.includes(e.id));
+    let centerY = 0;
+    
+    selectedElements.forEach(el => {
+      if (el.type === 'line') {
+        centerY += (el.y1 + el.y2) / 2;
+      } else if (el.type === 'rectangle') {
+        centerY += el.y + el.height / 2;
+      } else if (el.type === 'circle') {
+        centerY += el.cy;
+      } else if (el.type === 'arc') {
+        centerY += el.cy;
+      } else if (el.type === 'curve') {
+        centerY += (el.y1 + el.y2) / 2;
+      } else if (el.type === 'text') {
+        centerY += el.y;
+      }
+    });
+    
+    centerY /= selectedElements.length;
+    
+    setElements(prev => prev.map(el => {
+      if (!selectedIds.includes(el.id)) return el;
+      
+      if (el.type === 'line') {
+        return {
+          ...el,
+          y1: 2 * centerY - el.y1,
+          y2: 2 * centerY - el.y2
+        };
+      } else if (el.type === 'rectangle') {
+        return {
+          ...el,
+          y: 2 * centerY - el.y - el.height
+        };
+      } else if (el.type === 'circle') {
+        return {
+          ...el,
+          cy: 2 * centerY - el.cy
+        };
+      } else if (el.type === 'arc') {
+        return {
+          ...el,
+          cy: 2 * centerY - el.cy,
+          startAngle: -el.endAngle,
+          endAngle: -el.startAngle
+        };
+      } else if (el.type === 'curve') {
+        return {
+          ...el,
+          y1: 2 * centerY - el.y1,
+          y2: 2 * centerY - el.y2,
+          cpy: 2 * centerY - el.cpy
+        };
+      }
+      return el;
+    }));
+  }, [selectedIds, elements, setElements]);
+
   const handleNew = useCallback(() => {
     if (hasUnsavedChanges) {
       const confirm = window.confirm('Vous avez des modifications non enregistrées. Voulez-vous vraiment créer un nouveau projet ?');
@@ -682,6 +912,25 @@ const CADEditor = () => {
     setHasUnsavedChanges(false);
   }, [elements, guides, currentFileName]);
 
+  const handleLaserExport = useCallback(() => {
+    if (elements.length === 0) {
+      alert('Aucun élément à exporter !');
+      return;
+    }
+    setShowLaserExportModal(true);
+  }, [elements]);
+
+  const handleLaserExportConfirm = useCallback((machine, format) => {
+    try {
+      const result = exportForLaser(elements, machine, format, currentFileName, workArea);
+      if (result.success) {
+        alert(`✅ Export réussi !\n\nFichier: ${result.fileName}\nMachine: ${machine.name}\nFormat: ${format}\nÉléments: ${result.elementsCount}\nZone de travail: ${result.workAreaWidth.toFixed(1)} × ${result.workAreaHeight.toFixed(1)} mm`);
+      }
+    } catch (error) {
+      alert(`❌ Erreur lors de l'export :\n${error.message}`);
+    }
+  }, [elements, currentFileName, workArea]);
+
   const handleExport = useCallback((format) => {
     if (elements.length === 0) {
       alert('Aucun élément à exporter !');
@@ -712,10 +961,12 @@ const CADEditor = () => {
         maxX = Math.max(maxX, el.cx + rx);
         maxY = Math.max(maxY, el.cy + ry);
       } else if (el.type === 'arc') {
-        minX = Math.min(minX, el.cx - el.radius);
-        minY = Math.min(minY, el.cy - el.radius);
-        maxX = Math.max(maxX, el.cx + el.radius);
-        maxY = Math.max(maxY, el.cy + el.radius);
+        const rx = el.radiusX || el.radius;
+        const ry = el.radiusY || el.radius;
+        minX = Math.min(minX, el.cx - rx);
+        minY = Math.min(minY, el.cy - ry);
+        maxX = Math.max(maxX, el.cx + rx);
+        maxY = Math.max(maxY, el.cy + ry);
       } else if (el.type === 'text' && ctx) {
         ctx.save();
         ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
@@ -752,12 +1003,14 @@ const CADEditor = () => {
             svgContent += `  <ellipse cx="${el.cx}" cy="${el.cy}" rx="${rx}" ry="${ry}" stroke="black" stroke-width="0.3" fill="none" />\n`;
           }
         } else if (el.type === 'arc') {
-          const startX = el.cx + el.radius * Math.cos(el.startAngle);
-          const startY = el.cy + el.radius * Math.sin(el.startAngle);
-          const endX = el.cx + el.radius * Math.cos(el.endAngle);
-          const endY = el.cy + el.radius * Math.sin(el.endAngle);
+          const rx = el.radiusX || el.radius;
+          const ry = el.radiusY || el.radius;
+          const startX = el.cx + rx * Math.cos(el.startAngle);
+          const startY = el.cy + ry * Math.sin(el.startAngle);
+          const endX = el.cx + rx * Math.cos(el.endAngle);
+          const endY = el.cy + ry * Math.sin(el.endAngle);
           const largeArc = (el.endAngle - el.startAngle) > Math.PI ? 1 : 0;
-          svgContent += `  <path d="M ${startX} ${startY} A ${el.radius} ${el.radius} 0 ${largeArc} 1 ${endX} ${endY}" stroke="black" stroke-width="0.3" fill="none" />\n`;
+          svgContent += `  <path d="M ${startX} ${startY} A ${rx} ${ry} 0 ${largeArc} 1 ${endX} ${endY}" stroke="black" stroke-width="0.3" fill="none" />\n`;
         } else if (el.type === 'text') {
           const escapedText = el.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           svgContent += `  <text x="${el.x}" y="${el.y}" font-family="${el.fontFamily}" font-size="${el.fontSize}" font-weight="${el.fontWeight}" font-style="${el.fontStyle}" fill="black">${escapedText}</text>\n`;
@@ -820,7 +1073,13 @@ const CADEditor = () => {
             }
             ctx.stroke();
           } else if (el.type === 'arc') {
-            ctx.arc(el.cx, el.cy, el.radius, el.startAngle, el.endAngle);
+            const rx = el.radiusX || el.radius;
+            const ry = el.radiusY || el.radius;
+            if (rx === ry) {
+              ctx.arc(el.cx, el.cy, rx, el.startAngle, el.endAngle);
+            } else {
+              ctx.ellipse(el.cx, el.cy, rx, ry, 0, el.startAngle, el.endAngle);
+            }
             ctx.stroke();
           }
         }
@@ -1128,13 +1387,19 @@ const CADEditor = () => {
           const dy = snapped.y - el.cy;
           const dist = Math.sqrt(dx * dx + dy * dy);
           
-          const radiusTolerance = 15 / viewport.zoom;
-          if (Math.abs(dist - el.radius) > radiusTolerance) {
+          const clickAngle = Math.atan2(dy, dx);
+          if (!isAngleBetween(clickAngle, el.startAngle, el.endAngle)) {
             return false;
           }
           
-          const clickAngle = Math.atan2(dy, dx);
-          return isAngleBetween(clickAngle, el.startAngle, el.endAngle);
+          const radiusX = el.radiusX || el.radius;
+          const radiusY = el.radiusY || el.radius;
+          const cosAngle = Math.cos(clickAngle);
+          const sinAngle = Math.sin(clickAngle);
+          const radiusAtAngle = (radiusX * radiusY) / Math.sqrt((radiusY * cosAngle) ** 2 + (radiusX * sinAngle) ** 2);
+          
+          const radiusTolerance = 15 / viewport.zoom;
+          return Math.abs(dist - radiusAtAngle) <= radiusTolerance;
         } else if (el.type === 'text') {
           const canvas = getCanvasRef().current;
           if (!canvas) return false;
@@ -1324,9 +1589,11 @@ const CADEditor = () => {
             { x: el.cx, y: el.cy - radiusY, label: 'top' }
           ];
         } else if (el.type === 'arc') {
+          const radiusX = el.radiusX || el.radius;
+          const radiusY = el.radiusY || el.radius;
           controlPoints = [
-            { x: el.cx + el.radius * Math.cos(el.startAngle), y: el.cy + el.radius * Math.sin(el.startAngle), label: 'start' },
-            { x: el.cx + el.radius * Math.cos(el.endAngle), y: el.cy + el.radius * Math.sin(el.endAngle), label: 'end' }
+            { x: el.cx + radiusX * Math.cos(el.startAngle), y: el.cy + radiusY * Math.sin(el.startAngle), label: 'start' },
+            { x: el.cx + radiusX * Math.cos(el.endAngle), y: el.cy + radiusY * Math.sin(el.endAngle), label: 'end' }
           ];
         }
         
@@ -2179,6 +2446,7 @@ const CADEditor = () => {
           onSave={handleSave}
           onSaveAs={handleSaveAs}
           onExport={handleExport}
+          onLaserExport={handleLaserExport}
           onUndo={undo}
           onRedo={redo}
           onCut={handleCut}
@@ -2259,12 +2527,25 @@ const CADEditor = () => {
         selectedIds={selectedIds}
         elements={elements}
         onUpdateElement={updateElement}
+        setElements={setElements}
         workArea={workArea}
         onWorkAreaChange={setWorkArea}
+        onRotate={handleRotate}
+        onFlipHorizontal={handleFlipHorizontal}
+        onFlipVertical={handleFlipVertical}
       />
       
       {showDesignSystem && (
         <DesignSystem onClose={() => setShowDesignSystem(false)} />
+      )}
+      
+      {showLaserExportModal && (
+        <LaserExportModal
+          onClose={() => setShowLaserExportModal(false)}
+          onExport={handleLaserExportConfirm}
+          elements={elements}
+          workArea={workArea}
+        />
       )}
     </div>
   );

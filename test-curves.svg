@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <!-- Test des arcs elliptiques (A/a) -->
+  <g id="arcs-test" transform="translate(50, 50)">
+    <text x="0" y="-10" font-size="12" fill="black">Arcs elliptiques</text>
+    
+    <!-- Arc simple -->
+    <path d="M 10 50 A 30 30 0 0 1 70 50" stroke="red" stroke-width="2" fill="none"/>
+    
+    <!-- Arc avec rotation -->
+    <path d="M 10 80 A 30 20 45 0 1 70 80" stroke="blue" stroke-width="2" fill="none"/>
+    
+    <!-- Grand arc -->
+    <path d="M 10 110 A 30 30 0 1 1 70 110" stroke="green" stroke-width="2" fill="none"/>
+    
+    <!-- Arc elliptique complet (forme de vague) -->
+    <path d="M 10 140 A 20 15 0 0 1 40 140 A 20 15 0 0 0 70 140" stroke="purple" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- Test des courbes de Bézier lisses S/s -->
+  <g id="smooth-cubic-test" transform="translate(200, 50)">
+    <text x="0" y="-10" font-size="12" fill="black">Courbes lisses S/s</text>
+    
+    <!-- Courbe en S avec commande S -->
+    <path d="M 10 50 C 10 30, 40 30, 40 50 S 70 70, 70 50" stroke="red" stroke-width="2" fill="none"/>
+    
+    <!-- Chaîne de courbes lisses -->
+    <path d="M 10 90 C 10 70, 25 70, 25 90 S 40 110, 40 90 S 55 70, 55 90 S 70 110, 70 90" stroke="blue" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- Test des courbes quadratiques lisses T/t -->
+  <g id="smooth-quadratic-test" transform="translate(50, 200)">
+    <text x="0" y="-10" font-size="12" fill="black">Courbes quadratiques T/t</text>
+    
+    <!-- Courbe en vague avec T -->
+    <path d="M 10 50 Q 30 30, 50 50 T 90 50 T 130 50" stroke="green" stroke-width="2" fill="none"/>
+    
+    <!-- Forme ondulée complexe -->
+    <path d="M 10 90 Q 20 70, 30 90 T 50 90 T 70 90 T 90 90 T 110 90" stroke="orange" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- Dessin complexe combinant tous les types -->
+  <g id="complex-drawing" transform="translate(200, 200)">
+    <text x="0" y="-10" font-size="12" fill="black">Dessin complexe</text>
+    
+    <!-- Forme de cœur stylisé avec arcs et courbes -->
+    <path d="M 50 30 
+             A 15 15 0 0 1 50 60
+             A 15 15 0 0 1 50 30
+             M 50 30
+             C 50 20, 40 10, 30 10
+             A 10 10 0 0 0 10 30
+             C 10 50, 30 70, 50 85
+             C 70 70, 90 50, 90 30
+             A 10 10 0 0 0 70 10
+             C 60 10, 50 20, 50 30
+             Z" 
+          stroke="red" stroke-width="2" fill="rgba(255,0,0,0.1)"/>
+  </g>
+  
+  <!-- Comparaison : lignes droites vs courbes -->
+  <g id="comparison" transform="translate(50, 320)">
+    <text x="0" y="-10" font-size="12" fill="black">Sans arcs (lignes) vs Avec arcs</text>
+    
+    <!-- Approximation avec lignes droites -->
+    <path d="M 10 20 L 15 15 L 20 12 L 25 10 L 30 10 L 35 12 L 40 15 L 45 20" 
+          stroke="gray" stroke-width="1" fill="none" opacity="0.5"/>
+    <text x="10" y="35" font-size="8" fill="gray">Avant (lignes)</text>
+    
+    <!-- Vraie courbe avec arc -->
+    <path d="M 100 20 A 20 10 0 0 1 145 20" 
+          stroke="green" stroke-width="2" fill="none"/>
+    <text x="100" y="35" font-size="8" fill="green">Après (arc lisse)</text>
+  </g>
+</svg>
+

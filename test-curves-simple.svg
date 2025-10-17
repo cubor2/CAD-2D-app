@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Arcs elliptiques simples -->
+  <path d="M 20 30 A 30 30 0 0 1 80 30" stroke="red" stroke-width="1.5" fill="none"/>
+  
+  <path d="M 20 50 A 30 20 45 0 1 80 50" stroke="blue" stroke-width="1.5" fill="none"/>
+  
+  <path d="M 20 70 A 30 30 0 1 1 80 70" stroke="green" stroke-width="1.5" fill="none"/>
+  
+  <!-- Courbe de Bézier lisse avec S -->
+  <path d="M 110 30 C 110 20, 130 20, 130 30 S 150 40, 150 30" stroke="purple" stroke-width="1.5" fill="none"/>
+  
+  <!-- Courbe quadratique lisse avec T -->
+  <path d="M 110 60 Q 120 50, 130 60 T 150 60" stroke="orange" stroke-width="1.5" fill="none"/>
+  
+  <!-- Forme de cœur SIMPLE -->
+  <path d="M 100 120 
+           C 100 110, 90 100, 80 100
+           C 70 100, 60 110, 60 120
+           C 60 135, 100 160, 100 160
+           C 100 160, 140 135, 140 120
+           C 140 110, 130 100, 120 100
+           C 110 100, 100 110, 100 120
+           Z" 
+        stroke="red" stroke-width="1.5" fill="none"/>
+  
+  <!-- Cercle de comparaison -->
+  <circle cx="50" cy="180" r="15" stroke="gray" stroke-width="1.5" fill="none"/>
+  
+  <!-- Arc qui devrait faire un demi-cercle -->
+  <path d="M 85 180 A 15 15 0 1 1 115 180" stroke="green" stroke-width="1.5" fill="none"/>
+</svg>
+
