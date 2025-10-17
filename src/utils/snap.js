@@ -15,6 +15,28 @@ export const findGuideSnapPosition = (guideType, currentPos, elements, viewport)
       } else {
         positions.push(el.x1, el.x2, (el.x1 + el.x2) / 2);
       }
+    } else if (el.type === 'curve') {
+      if (el.cpx !== undefined && el.cpy !== undefined) {
+        if (guideType === 'horizontal') {
+          positions.push(el.y1, el.y2);
+          for (let t = 0.25; t <= 0.75; t += 0.25) {
+            const t2 = t * t;
+            const mt = 1 - t;
+            const mt2 = mt * mt;
+            const y = mt2 * el.y1 + 2 * mt * t * el.cpy + t2 * el.y2;
+            positions.push(y);
+          }
+        } else {
+          positions.push(el.x1, el.x2);
+          for (let t = 0.25; t <= 0.75; t += 0.25) {
+            const t2 = t * t;
+            const mt = 1 - t;
+            const mt2 = mt * mt;
+            const x = mt2 * el.x1 + 2 * mt * t * el.cpx + t2 * el.x2;
+            positions.push(x);
+          }
+        }
+      }
     } else if (el.type === 'rectangle') {
       if (guideType === 'horizontal') {
         positions.push(el.y, el.y + el.height, el.y + el.height / 2);
@@ -65,6 +87,42 @@ export const findSnapPoints = (point, elements, excludeIds, viewport) => {
       const lineSnap = pointToLineSegment(point, { x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 });
       if (lineSnap.distance < edgeSnapDist) {
         snapPoints.push({ x: lineSnap.x, y: lineSnap.y, type: 'edge', priority: 3, distance: lineSnap.distance, elementId: el.id });
+      }
+    } else if (el.type === 'curve') {
+      if (el.cpx !== undefined && el.cpy !== undefined) {
+        snapPoints.push(
+          { x: el.x1, y: el.y1, type: 'endpoint', priority: 20, elementId: el.id },
+          { x: el.x2, y: el.y2, type: 'endpoint', priority: 20, elementId: el.id }
+        );
+        
+        for (let t = 0.25; t <= 0.75; t += 0.25) {
+          const t2 = t * t;
+          const mt = 1 - t;
+          const mt2 = mt * mt;
+          const x = mt2 * el.x1 + 2 * mt * t * el.cpx + t2 * el.x2;
+          const y = mt2 * el.y1 + 2 * mt * t * el.cpy + t2 * el.y2;
+          snapPoints.push({ x, y, type: 'midpoint', priority: 15, elementId: el.id });
+        }
+        
+        let minDist = Infinity;
+        let closestPoint = null;
+        for (let t = 0; t <= 1; t += 0.05) {
+          const t2 = t * t;
+          const mt = 1 - t;
+          const mt2 = mt * mt;
+          const x = mt2 * el.x1 + 2 * mt * t * el.cpx + t2 * el.x2;
+          const y = mt2 * el.y1 + 2 * mt * t * el.cpy + t2 * el.y2;
+          const dx = point.x - x;
+          const dy = point.y - y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < minDist) {
+            minDist = dist;
+            closestPoint = { x, y };
+          }
+        }
+        if (minDist < edgeSnapDist) {
+          snapPoints.push({ x: closestPoint.x, y: closestPoint.y, type: 'edge', priority: 3, distance: minDist, elementId: el.id });
+        }
       }
     } else if (el.type === 'rectangle') {
       snapPoints.push(

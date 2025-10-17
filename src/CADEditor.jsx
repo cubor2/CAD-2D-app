@@ -14,6 +14,7 @@ import { screenToWorld, worldToScreen } from './utils/transforms';
 import { snapToGridFn, pointToLineDistance, isAngleBetween } from './utils/geometry';
 import { findSnapPoints, findGuideSnapPosition, applyMultiPointSnap } from './utils/snap';
 import { RULER_SIZE, GRID_SIZE, GUIDE_SNAP_DISTANCE } from './constants';
+import { importSVG } from './utils/svgImporter';
 
 const CADEditor = () => {
   const canvasRef = useRef(null);
@@ -402,6 +403,13 @@ const CADEditor = () => {
           newEl.y1 += offset;
           newEl.x2 += offset;
           newEl.y2 += offset;
+        } else if (el.type === 'curve') {
+          newEl.x1 += offset;
+          newEl.y1 += offset;
+          newEl.x2 += offset;
+          newEl.y2 += offset;
+          newEl.cpx += offset;
+          newEl.cpy += offset;
         } else if (el.type === 'rectangle') {
           newEl.x += offset;
           newEl.y += offset;
@@ -486,7 +494,8 @@ const CADEditor = () => {
       if (el && el.type === 'circle' && ['top', 'right', 'bottom', 'left'].includes(selectedEdge.edge)) {
         const newArcs = [];
         const quarters = ['top', 'right', 'bottom', 'left'];
-        const radius = el.radius || el.radiusX;
+        const radiusX = el.radiusX || el.radius;
+        const radiusY = el.radiusY || el.radius;
         
         quarters.forEach(quarter => {
           if (quarter !== selectedEdge.edge) {
@@ -504,7 +513,9 @@ const CADEditor = () => {
               type: 'arc',
               cx: el.cx,
               cy: el.cy,
-              radius: radius,
+              radius: Math.max(radiusX, radiusY),
+              radiusX: radiusX,
+              radiusY: radiusY,
               startAngle: range.start,
               endAngle: range.end,
               stroke: el.stroke || '#2B2B2B',
@@ -553,6 +564,8 @@ const CADEditor = () => {
       
       if (el.type === 'line') {
         return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
+      } else if (el.type === 'curve') {
+        return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy, cpx: el.cpx + dx, cpy: el.cpy + dy };
       } else if (el.type === 'rectangle') {
         return { ...el, x: el.x + dx, y: el.y + dy };
       } else if (el.type === 'circle') {
@@ -602,6 +615,33 @@ const CADEditor = () => {
     };
     input.click();
   }, [updateElements, setGuides]);
+
+  const handleImportSVG = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.svg';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const svgString = event.target.result;
+        const result = importSVG(svgString, getNextId, workArea.width, workArea.height);
+        
+        if (result.success) {
+          const newElements = [...elements, ...result.elements];
+          updateElements(newElements);
+          setHasUnsavedChanges(true);
+          alert(`Import réussi ! ${result.elements.length} élément(s) importé(s).`);
+        } else {
+          alert(`Erreur lors de l'import SVG : ${result.error}`);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, [elements, getNextId, updateElements, workArea]);
 
   const handleSave = useCallback(() => {
     const data = {
@@ -1059,6 +1099,21 @@ const CADEditor = () => {
         if (el.type === 'line') {
           const dist = pointToLineDistance(snapped, { x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 });
           return dist < 5 / viewport.zoom;
+        } else if (el.type === 'curve') {
+          if (typeof el.cpx === 'undefined' || typeof el.cpy === 'undefined') return false;
+          let minDist = Infinity;
+          for (let t = 0; t <= 1; t += 0.02) {
+            const t2 = t * t;
+            const mt = 1 - t;
+            const mt2 = mt * mt;
+            const x = mt2 * el.x1 + 2 * mt * t * el.cpx + t2 * el.x2;
+            const y = mt2 * el.y1 + 2 * mt * t * el.cpy + t2 * el.y2;
+            const dx = snapped.x - x;
+            const dy = snapped.y - y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            minDist = Math.min(minDist, dist);
+          }
+          return minDist < 10 / viewport.zoom;
         } else if (el.type === 'rectangle') {
           return snapped.x >= el.x && snapped.x <= el.x + el.width &&
                  snapped.y >= el.y && snapped.y <= el.y + el.height;
@@ -1140,7 +1195,7 @@ const CADEditor = () => {
     }
 
     if (tool === 'edit') {
-      const CLICK_DISTANCE = 8 / viewport.zoom;
+      const CLICK_DISTANCE = 20 / viewport.zoom;
       
       if (editingTextId) {
         const textEl = elements.find(e => e.id === editingTextId);
@@ -1239,6 +1294,13 @@ const CADEditor = () => {
         } else if (el.type === 'line') {
           controlPoints = [
             { x: el.x1, y: el.y1, label: 'start' },
+            { x: (el.x1 + el.x2) / 2, y: (el.y1 + el.y2) / 2, label: 'middle' },
+            { x: el.x2, y: el.y2, label: 'end' }
+          ];
+        } else if (el.type === 'curve') {
+          controlPoints = [
+            { x: el.x1, y: el.y1, label: 'start' },
+            { x: el.cpx, y: el.cpy, label: 'control' },
             { x: el.x2, y: el.y2, label: 'end' }
           ];
         } else if (el.type === 'rectangle') {
@@ -1283,21 +1345,6 @@ const CADEditor = () => {
         }
       }
 
-      const LINE_CLICK_DISTANCE = 5 / viewport.zoom;
-      
-      for (const el of elements.filter(e => selectedIds.includes(e.id) && e.type === 'line')) {
-        const dist = pointToLineDistance(snapped, { x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 });
-        if (dist < LINE_CLICK_DISTANCE) {
-          if (selectedEdge && selectedEdge.elementId === el.id && selectedEdge.edge === 'line') {
-            setIsDraggingEdge(true);
-            setDragStart({ x: snapped.x, y: snapped.y });
-            setEdgeOriginalElement(JSON.parse(JSON.stringify(el)));
-          } else {
-            setSelectedEdge({ elementId: el.id, edge: 'line' });
-          }
-          return;
-        }
-      }
       
       const EDGE_CLICK_DISTANCE = 5 / viewport.zoom;
       
@@ -1327,16 +1374,20 @@ const CADEditor = () => {
       const ARC_CLICK_DISTANCE = 5 / viewport.zoom;
       
       for (const el of elements.filter(e => selectedIds.includes(e.id) && e.type === 'circle')) {
-        const radius = el.radius || el.radiusX;
+        const radiusX = el.radiusX || el.radius;
+        const radiusY = el.radiusY || el.radius;
         
         const dx = snapped.x - el.cx;
         const dy = snapped.y - el.cy;
         const clickAngle = Math.atan2(dy, dx);
         
         const distToCenter = Math.sqrt(dx * dx + dy * dy);
-        const distToCircle = Math.abs(distToCenter - radius);
+        const cosAngle = Math.cos(clickAngle);
+        const sinAngle = Math.sin(clickAngle);
+        const radiusAtAngle = (radiusX * radiusY) / Math.sqrt((radiusY * cosAngle) ** 2 + (radiusX * sinAngle) ** 2);
+        const distToEllipse = Math.abs(distToCenter - radiusAtAngle);
         
-        if (distToCircle < ARC_CLICK_DISTANCE) {
+        if (distToEllipse < ARC_CLICK_DISTANCE) {
           let quarter = '';
           const normalizedAngle = clickAngle < 0 ? clickAngle + Math.PI * 2 : clickAngle;
           
@@ -1384,10 +1435,81 @@ const CADEditor = () => {
         }
       }
 
+      for (const el of elements) {
+        if (selectedIds.includes(el.id)) continue;
+        
+        let controlPoints = [];
+        if (el.type === 'line') {
+          controlPoints = [
+            { x: el.x1, y: el.y1, label: 'start' },
+            { x: (el.x1 + el.x2) / 2, y: (el.y1 + el.y2) / 2, label: 'middle' },
+            { x: el.x2, y: el.y2, label: 'end' }
+          ];
+        } else if (el.type === 'curve') {
+          controlPoints = [
+            { x: el.x1, y: el.y1, label: 'start' },
+            { x: el.cpx, y: el.cpy, label: 'control' },
+            { x: el.x2, y: el.y2, label: 'end' }
+          ];
+        } else if (el.type === 'rectangle') {
+          controlPoints = [
+            { x: el.x, y: el.y, label: 'topLeft' },
+            { x: el.x + el.width, y: el.y, label: 'topRight' },
+            { x: el.x, y: el.y + el.height, label: 'bottomLeft' },
+            { x: el.x + el.width, y: el.y + el.height, label: 'bottomRight' },
+            { x: el.x + el.width / 2, y: el.y, label: 'top' },
+            { x: el.x + el.width, y: el.y + el.height / 2, label: 'right' },
+            { x: el.x + el.width / 2, y: el.y + el.height, label: 'bottom' },
+            { x: el.x, y: el.y + el.height / 2, label: 'left' }
+          ];
+        } else if (el.type === 'circle') {
+          const radiusX = el.radiusX || el.radius;
+          const radiusY = el.radiusY || el.radius;
+          controlPoints = [
+            { x: el.cx + radiusX, y: el.cy, label: 'right' },
+            { x: el.cx - radiusX, y: el.cy, label: 'left' },
+            { x: el.cx, y: el.cy + radiusY, label: 'bottom' },
+            { x: el.cx, y: el.cy - radiusY, label: 'top' }
+          ];
+        }
+        
+        const pointOnElement = controlPoints.find(cp => {
+          const dist = Math.sqrt((cp.x - snapped.x) ** 2 + (cp.y - snapped.y) ** 2);
+          return dist < CLICK_DISTANCE;
+        });
+        
+        if (pointOnElement) {
+          setSelectedIds([el.id]);
+          setEditingPoint({
+            elementId: el.id,
+            pointType: pointOnElement.label,
+            originalElement: JSON.parse(JSON.stringify(el)),
+            startPoint: snapped
+          });
+          setDragStart(snapped);
+          return;
+        }
+      }
+
       const clicked = elements.find(el => {
         if (el.type === 'line') {
           const dist = pointToLineDistance(snapped, { x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 });
           return dist < 5 / viewport.zoom;
+        } else if (el.type === 'curve') {
+          if (typeof el.cpx === 'undefined' || typeof el.cpy === 'undefined') return false;
+          let minDist = Infinity;
+          for (let t = 0; t <= 1; t += 0.05) {
+            const t2 = t * t;
+            const mt = 1 - t;
+            const mt2 = mt * mt;
+            const x = mt2 * el.x1 + 2 * mt * t * el.cpx + t2 * el.x2;
+            const y = mt2 * el.y1 + 2 * mt * t * el.cpy + t2 * el.y2;
+            const dx = snapped.x - x;
+            const dy = snapped.y - y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            minDist = Math.min(minDist, dist);
+          }
+          return minDist < 5 / viewport.zoom;
         } else if (el.type === 'rectangle') {
           return snapped.x >= el.x && snapped.x <= el.x + el.width &&
                  snapped.y >= el.y && snapped.y <= el.y + el.height;
@@ -1604,6 +1726,43 @@ const CADEditor = () => {
           setElements(prev => prev.map(item =>
             item.id === el.id ? { ...item, x2: newX, y2: newY } : item
           ));
+        } else if (editingPoint.pointType === 'middle') {
+          setElements(prev => prev.map(item => {
+            if (item.id === el.id) {
+              return {
+                id: item.id,
+                type: 'curve',
+                x1: item.x1,
+                y1: item.y1,
+                x2: item.x2,
+                y2: item.y2,
+                cpx: snapped.x,
+                cpy: snapped.y,
+                stroke: item.stroke || '#2B2B2B',
+                strokeWidth: item.strokeWidth || 1.5
+              };
+            }
+            return item;
+          }));
+          
+          setEditingPoint(prev => ({
+            ...prev,
+            pointType: 'control'
+          }));
+        }
+      } else if (el.type === 'curve') {
+        if (editingPoint.pointType === 'start') {
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, x1: snapped.x, y1: snapped.y } : item
+          ));
+        } else if (editingPoint.pointType === 'end') {
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, x2: snapped.x, y2: snapped.y } : item
+          ));
+        } else if (editingPoint.pointType === 'control') {
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, cpx: snapped.x, cpy: snapped.y } : item
+          ));
         }
       } else if (el.type === 'rectangle') {
         const orig = editingPoint.originalElement;
@@ -1812,6 +1971,8 @@ const CADEditor = () => {
         
         if (el.type === 'line') {
           return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
+        } else if (el.type === 'curve') {
+          return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy, cpx: el.cpx + dx, cpy: el.cpy + dy };
         } else if (el.type === 'rectangle') {
           return { ...el, x: el.x + dx, y: el.y + dy };
         } else if (el.type === 'circle') {
@@ -1958,6 +2119,12 @@ const CADEditor = () => {
         const corners = [];
         if (el.type === 'line') {
           corners.push(worldToScreenWrapper(el.x1, el.y1), worldToScreenWrapper(el.x2, el.y2));
+        } else if (el.type === 'curve') {
+          corners.push(
+            worldToScreenWrapper(el.x1, el.y1),
+            worldToScreenWrapper(el.cpx, el.cpy),
+            worldToScreenWrapper(el.x2, el.y2)
+          );
         } else if (el.type === 'rectangle') {
           corners.push(
             worldToScreenWrapper(el.x, el.y),
@@ -2008,6 +2175,7 @@ const CADEditor = () => {
         <MenuBar
           onNew={handleNew}
           onOpen={handleOpen}
+          onImportSVG={handleImportSVG}
           onSave={handleSave}
           onSaveAs={handleSaveAs}
           onExport={handleExport}

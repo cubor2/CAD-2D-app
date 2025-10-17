@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 const MenuBar = React.memo(({ 
   onNew, 
   onOpen, 
+  onImportSVG,
   onSave, 
   onSaveAs, 
   onExport,
@@ -64,6 +65,11 @@ const MenuBar = React.memo(({
               label="Ouvrir..." 
               shortcut="Ctrl + O"
               onClick={() => handleMenuAction(onOpen)}
+            />
+            <MenuItem 
+              label="Importer SVG..." 
+              shortcut=""
+              onClick={() => handleMenuAction(onImportSVG)}
             />
             <div className="h-px bg-drawhard-grid my-1" />
             <MenuItem 

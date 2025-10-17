@@ -52,6 +52,21 @@ export const getElementSnapPoints = (el) => {
       { x: el.x2, y: el.y2 },
       { x: (el.x1 + el.x2) / 2, y: (el.y1 + el.y2) / 2 }
     );
+  } else if (el.type === 'curve') {
+    points.push(
+      { x: el.x1, y: el.y1 },
+      { x: el.x2, y: el.y2 }
+    );
+    if (el.cpx !== undefined && el.cpy !== undefined) {
+      for (let t = 0.25; t <= 0.75; t += 0.25) {
+        const t2 = t * t;
+        const mt = 1 - t;
+        const mt2 = mt * mt;
+        const x = mt2 * el.x1 + 2 * mt * t * el.cpx + t2 * el.x2;
+        const y = mt2 * el.y1 + 2 * mt * t * el.cpy + t2 * el.y2;
+        points.push({ x, y });
+      }
+    }
   } else if (el.type === 'rectangle') {
     points.push(
       { x: el.x, y: el.y },

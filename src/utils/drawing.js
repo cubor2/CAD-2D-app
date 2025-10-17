@@ -193,6 +193,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
 
   if (el.type === 'arc') {
     const center = worldToScreen(el.cx, el.cy, canvas, viewport);
+    const radiusX = (el.radiusX || el.radius) * viewport.zoom;
+    const radiusY = (el.radiusY || el.radius) * viewport.zoom;
     const radius = el.radius * viewport.zoom;
     
     const isArcSelected = selectedEdge && selectedEdge.elementId === el.id && selectedEdge.edge === 'arc';
@@ -206,23 +208,30 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     }
     
     ctx.beginPath();
-    ctx.arc(center.x, center.y, radius, el.startAngle, el.endAngle);
+    if (el.radiusX && el.radiusY && Math.abs(el.radiusX - el.radiusY) > 0.1) {
+      ctx.ellipse(center.x, center.y, radiusX, radiusY, 0, el.startAngle, el.endAngle);
+    } else {
+      ctx.arc(center.x, center.y, radius, el.startAngle, el.endAngle);
+    }
     ctx.stroke();
     
-    if (isSelected || el === currentElement || showDimensions) {
+    if (showDimensions) {
       const midAngle = (el.startAngle + el.endAngle) / 2;
-      const textX = center.x + radius * Math.cos(midAngle) * 1.2;
-      const textY = center.y + radius * Math.sin(midAngle) * 1.2;
-      const arcLength = Math.abs(el.endAngle - el.startAngle) * el.radius;
+      const avgRadius = (radiusX + radiusY) / 2;
+      const textX = center.x + avgRadius * Math.cos(midAngle) * 1.2;
+      const textY = center.y + avgRadius * Math.sin(midAngle) * 1.2;
+      const arcLength = Math.abs(el.endAngle - el.startAngle) * (el.radiusX || el.radius);
       ctx.fillStyle = '#1F1F1F';
       ctx.font = 'bold 12px monospace';
       ctx.fillText(`${arcLength.toFixed(1)}mm`, textX, textY);
     }
     
     if (isSelected) {
+      const rx = el.radiusX || el.radius;
+      const ry = el.radiusY || el.radius;
       const controlPoints = [
-        worldToScreen(el.cx + el.radius * Math.cos(el.startAngle), el.cy + el.radius * Math.sin(el.startAngle), canvas, viewport),
-        worldToScreen(el.cx + el.radius * Math.cos(el.endAngle), el.cy + el.radius * Math.sin(el.endAngle), canvas, viewport),
+        worldToScreen(el.cx + rx * Math.cos(el.startAngle), el.cy + ry * Math.sin(el.startAngle), canvas, viewport),
+        worldToScreen(el.cx + rx * Math.cos(el.endAngle), el.cy + ry * Math.sin(el.endAngle), canvas, viewport),
         worldToScreen(el.cx, el.cy, canvas, viewport)
       ];
       
@@ -257,7 +266,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     ctx.lineTo(end.x, end.y);
     ctx.stroke();
 
-    if (isSelected || el === currentElement || showDimensions) {
+    if (showDimensions) {
       const length = Math.sqrt((el.x2 - el.x1) ** 2 + (el.y2 - el.y1) ** 2);
       const midX = (start.x + end.x) / 2;
       const midY = (start.y + end.y) / 2;
@@ -269,15 +278,73 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     if (isSelected) {
       const controlPoints = [
         worldToScreen(el.x1, el.y1, canvas, viewport),
-        worldToScreen(el.x2, el.y2, canvas, viewport),
-        worldToScreen((el.x1 + el.x2) / 2, (el.y1 + el.y2) / 2, canvas, viewport)
+        worldToScreen((el.x1 + el.x2) / 2, (el.y1 + el.y2) / 2, canvas, viewport),
+        worldToScreen(el.x2, el.y2, canvas, viewport)
       ];
       
       ctx.save();
-      controlPoints.forEach(pt => {
-        ctx.fillStyle = '#2B2B2B';
+      controlPoints.forEach((pt, idx) => {
+        ctx.fillStyle = idx === 1 ? '#00aaff' : '#2B2B2B';
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+  } else if (el.type === 'curve') {
+    const start = worldToScreen(el.x1, el.y1, canvas, viewport);
+    const control = worldToScreen(el.cpx, el.cpy, canvas, viewport);
+    const end = worldToScreen(el.x2, el.y2, canvas, viewport);
+    
+    if (isFlashing) {
+      ctx.strokeStyle = flashColor;
+      ctx.lineWidth = 4;
+    } else {
+      ctx.strokeStyle = isSelected ? '#E44A33' : (el.stroke || '#2B2B2B');
+      ctx.lineWidth = isSelected ? 2.5 : (el.strokeWidth || 1.5);
+    }
+    
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.quadraticCurveTo(control.x, control.y, end.x, end.y);
+    ctx.stroke();
+
+    if (showDimensions) {
+      const length = Math.sqrt((el.x2 - el.x1) ** 2 + (el.y2 - el.y1) ** 2);
+      const midX = (start.x + end.x) / 2;
+      const midY = (start.y + end.y) / 2;
+      ctx.fillStyle = '#1F1F1F';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(`~${length.toFixed(1)}mm`, midX + 5, midY - 5);
+    }
+    
+    if (isSelected) {
+      ctx.save();
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = '#00aaff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(control.x, control.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      
+      const controlPoints = [
+        { pos: start, label: 'start' },
+        { pos: control, label: 'control' },
+        { pos: end, label: 'end' }
+      ];
+      
+      ctx.save();
+      controlPoints.forEach(({ pos, label }) => {
+        ctx.fillStyle = label === 'control' ? '#00aaff' : '#2B2B2B';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#FFFFFF';
         ctx.lineWidth = 2;
@@ -323,7 +390,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.fill();
     }
 
-    if (isSelected || el === currentElement || showDimensions) {
+    if (showDimensions) {
       ctx.fillStyle = '#1F1F1F';
       ctx.font = 'bold 12px monospace';
       ctx.fillText(`${Math.abs(el.width).toFixed(1)}mm`, topLeft.x + width / 2 - 20, topLeft.y - 5);
@@ -394,7 +461,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.stroke();
     }
 
-    if (isSelected || el === currentElement || showDimensions) {
+    if (showDimensions) {
       ctx.fillStyle = '#1F1F1F';
       ctx.font = 'bold 12px monospace';
       if (el.radiusX && el.radiusY && Math.abs(el.radiusX - el.radiusY) > 0.1) {
