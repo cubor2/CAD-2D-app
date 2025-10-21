@@ -1,5 +1,93 @@
-import { SNAP_DISTANCE, EDGE_SNAP_DISTANCE, GUIDE_SNAP_DISTANCE } from '../constants';
+import { SNAP_DISTANCE, EDGE_SNAP_DISTANCE, GUIDE_SNAP_DISTANCE, GRID_SIZE } from '../constants';
 import { pointToLineSegment, getElementSnapPoints, isAngleBetween } from './geometry';
+
+/**
+ * Fonction unifiée de snap - centralise toute la logique
+ * @param {Object} point - Point à snapper { x, y }
+ * @param {Object} options - Options de snap
+ * @returns {Object} { x, y, snapInfo } où snapInfo contient { type, priority, x, y }
+ */
+export const computeSnap = (point, options = {}) => {
+  const {
+    elements = [],
+    excludeIds = [],
+    viewport = { zoom: 1 },
+    guides = [],
+    showRulers = false,
+    snapToElements = true,
+    snapToGrid = true,
+    gridSize = GRID_SIZE
+  } = options;
+  
+  let snappedX = point.x;
+  let snappedY = point.y;
+  let snapX = null;
+  let snapY = null;
+  
+  // Priorité 1 : Guides (si activés)
+  if (showRulers && guides.length > 0) {
+    const guideSnapDist = GUIDE_SNAP_DISTANCE / viewport.zoom;
+    
+    for (const guide of guides) {
+      if (guide.type === 'horizontal' && !snapY) {
+        if (Math.abs(point.y - guide.position) < guideSnapDist) {
+          snappedY = guide.position;
+          snapY = { y: guide.position, type: 'guide', priority: 100 };
+        }
+      } else if (guide.type === 'vertical' && !snapX) {
+        if (Math.abs(point.x - guide.position) < guideSnapDist) {
+          snappedX = guide.position;
+          snapX = { x: guide.position, type: 'guide', priority: 100 };
+        }
+      }
+    }
+  }
+  
+  // Priorité 2 : Éléments (si activés)
+  if (snapToElements) {
+    const elementSnap = findSnapPoints(point, elements, excludeIds, viewport);
+    if (elementSnap) {
+      if (!snapX) {
+        snappedX = elementSnap.x;
+        snapX = elementSnap;
+      }
+      if (!snapY) {
+        snappedY = elementSnap.y;
+        snapY = elementSnap;
+      }
+    }
+  }
+  
+  // Priorité 3 : Grille (si activée)
+  if (snapToGrid) {
+    if (!snapX) {
+      snappedX = Math.round(point.x / gridSize) * gridSize;
+      snapX = { x: snappedX, type: 'grid', priority: 1 };
+    }
+    if (!snapY) {
+      snappedY = Math.round(point.y / gridSize) * gridSize;
+      snapY = { y: snappedY, type: 'grid', priority: 1 };
+    }
+  }
+  
+  // Combiner les snaps X et Y
+  let combinedSnap = null;
+  if (snapX || snapY) {
+    combinedSnap = {
+      x: snappedX,
+      y: snappedY,
+      type: snapX?.type || snapY?.type || 'combined',
+      priority: Math.max(snapX?.priority || 0, snapY?.priority || 0),
+      isGuide: (snapX?.type === 'guide' || snapY?.type === 'guide')
+    };
+  }
+  
+  return {
+    x: snappedX,
+    y: snappedY,
+    snapInfo: combinedSnap
+  };
+};
 
 export const findGuideSnapPosition = (guideType, currentPos, elements, viewport) => {
   const SNAP_DIST = 8 / viewport.zoom;

@@ -13,7 +13,7 @@ import { useSelection } from './hooks/useSelection';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { screenToWorld, worldToScreen } from './utils/transforms';
 import { snapToGridFn, pointToLineDistance, isAngleBetween } from './utils/geometry';
-import { findSnapPoints, findGuideSnapPosition, applyMultiPointSnap } from './utils/snap';
+import { findSnapPoints, findGuideSnapPosition, applyMultiPointSnap, computeSnap } from './utils/snap';
 import { RULER_SIZE, GRID_SIZE, GUIDE_SNAP_DISTANCE } from './constants';
 import { importSVG } from './utils/svgImporter';
 import { exportForLaser } from './utils/laserExporter';
@@ -323,69 +323,22 @@ const CADEditor = () => {
   };
 
   const applySnap = (point, excludeIds = [], autoSetSnapPoint = true) => {
-    let snappedX = point.x;
-    let snappedY = point.y;
-    let snapX = null;
-    let snapY = null;
-
-    if (showRulers && guides.length > 0) {
-      const guideSnapDist = GUIDE_SNAP_DISTANCE / viewport.zoom;
-      
-      for (const guide of guides) {
-        if (guide.type === 'horizontal' && !snapY) {
-          if (Math.abs(point.y - guide.position) < guideSnapDist) {
-            snappedY = guide.position;
-            snapY = { y: guide.position, type: 'guide', priority: 100 };
-          }
-        } else if (guide.type === 'vertical' && !snapX) {
-          if (Math.abs(point.x - guide.position) < guideSnapDist) {
-            snappedX = guide.position;
-            snapX = { x: guide.position, type: 'guide', priority: 100 };
-          }
-        }
-      }
-    }
-
-    if (snapToElements) {
-      const elementSnap = findSnapPoints(point, elements, excludeIds, viewport);
-      if (elementSnap) {
-        if (!snapX) {
-          snappedX = elementSnap.x;
-          snapX = elementSnap;
-        }
-        if (!snapY) {
-          snappedY = elementSnap.y;
-          snapY = elementSnap;
-        }
-      }
-    }
-
-    if (snapToGrid) {
-      if (!snapX) {
-        snappedX = Math.round(point.x / GRID_SIZE) * GRID_SIZE;
-        snapX = { x: snappedX, type: 'grid', priority: 1 };
-      }
-      if (!snapY) {
-        snappedY = Math.round(point.y / GRID_SIZE) * GRID_SIZE;
-        snapY = { y: snappedY, type: 'grid', priority: 1 };
-      }
-    }
-
-    let combinedSnap = null;
-    if (snapX || snapY) {
-      combinedSnap = {
-        x: snappedX,
-        y: snappedY,
-        type: snapX?.type || snapY?.type || 'combined',
-        priority: Math.max(snapX?.priority || 0, snapY?.priority || 0),
-        isGuide: (snapX?.type === 'guide' || snapY?.type === 'guide')
-      };
-    }
+    const result = computeSnap(point, {
+      elements,
+      excludeIds,
+      viewport,
+      guides,
+      showRulers,
+      snapToElements,
+      snapToGrid,
+      gridSize: GRID_SIZE
+    });
 
     if (autoSetSnapPoint) {
-    setSnapPoint(combinedSnap);
+      setSnapPoint(result.snapInfo);
     }
-    return { x: snappedX, y: snappedY, snapInfo: combinedSnap };
+    
+    return result;
   };
 
   const handleToolChange = useCallback((newTool) => {
@@ -2050,49 +2003,19 @@ const CADEditor = () => {
       }
 
       if (!foundControlPoint) {
-        if (showRulers && guides.length > 0) {
-          const guideSnapDist = GUIDE_SNAP_DISTANCE / viewport.zoom;
-          for (const guide of guides) {
-            if (guide.type === 'horizontal' && !snapY) {
-              if (Math.abs(point.y - guide.position) < guideSnapDist) {
-                snappedY = guide.position;
-                snapY = { y: guide.position, type: 'guide', priority: 100 };
-              }
-            } else if (guide.type === 'vertical' && !snapX) {
-              if (Math.abs(point.x - guide.position) < guideSnapDist) {
-                snappedX = guide.position;
-                snapX = { x: guide.position, type: 'guide', priority: 100 };
-              }
-            }
-          }
-        }
-
-        if (snapToElements) {
-          const elementSnap = findSnapPoints(point, elements, [], viewport);
-          if (elementSnap) {
-            if (!snapX) {
-              snappedX = elementSnap.x;
-              snapX = elementSnap;
-            }
-            if (!snapY) {
-              snappedY = elementSnap.y;
-              snapY = elementSnap;
-            }
-          }
-        }
-
-        if (snapX || snapY) {
-          const combinedSnap = {
-            x: snappedX,
-            y: snappedY,
-            type: snapX?.type || snapY?.type || 'combined',
-            priority: Math.max(snapX?.priority || 0, snapY?.priority || 0),
-            isGuide: (snapX?.type === 'guide' || snapY?.type === 'guide')
-          };
-          setSnapPoint(combinedSnap);
-        } else {
-          setSnapPoint(null);
-        }
+        // Utiliser la fonction unifiée de snap
+        const snapResult = computeSnap(point, {
+          elements,
+          excludeIds: [],
+          viewport,
+          guides,
+          showRulers,
+          snapToElements,
+          snapToGrid: false, // Pas de snap grille en hover simple
+          gridSize: GRID_SIZE
+        });
+        
+        setSnapPoint(snapResult.snapInfo);
         
         const hoveredElement = [...elements].reverse().find(el => 
           selectedIds.includes(el.id) && isPointInElement(point, el, viewport, 10, pointToLineDistance)
