@@ -17,6 +17,8 @@ import { findSnapPoints, findGuideSnapPosition, applyMultiPointSnap } from './ut
 import { RULER_SIZE, GRID_SIZE, GUIDE_SNAP_DISTANCE } from './constants';
 import { importSVG } from './utils/svgImporter';
 import { exportForLaser } from './utils/laserExporter';
+import { getTextDimensions, invalidateTextCache } from './utils/textMeasurement';
+import { getElementControlPoints, getTextEdges, findNearestControlPoint, findNearestEdgePoint, getCursorForControlPoint, isPointInElement } from './utils/elementGeometry';
 
 const CADEditor = () => {
   const canvasRef = useRef(null);
@@ -1468,25 +1470,7 @@ const CADEditor = () => {
           const radiusTolerance = 15 / viewport.zoom;
           return Math.abs(dist - radiusAtAngle) <= radiusTolerance;
         } else if (el.type === 'text') {
-          const canvas = getCanvasRef().current;
-          if (!canvas) return false;
-          
-          const ctx = canvas.getContext('2d');
-          ctx.save();
-          ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
-          const lines = el.text ? el.text.split('\n') : [''];
-          const lineHeight = el.fontSize * 1.2;
-          const widths = lines.map(line => ctx.measureText(line).width);
-          const textWidthPx = Math.max(...widths, el.fontSize * 3);
-          const textHeightPx = Math.max(lines.length * lineHeight, el.fontSize);
-          ctx.restore();
-          
-          const textWidth = textWidthPx / viewport.zoom;
-          const textHeight = textHeightPx / viewport.zoom;
-          
-          const margin = 25 / viewport.zoom;
-          return point.x >= el.x - margin && point.x <= el.x + textWidth + margin &&
-                 point.y >= el.y - textHeight - margin && point.y <= el.y + margin;
+          return isPointInElement(point, el, viewport, 25, pointToLineDistance);
         }
         return false;
       });
@@ -2024,114 +2008,16 @@ const CADEditor = () => {
       let foundControlPoint = false;
 
       if (selectedIds.length > 0) {
-        const HOVER_DISTANCE = 20 / viewport.zoom;
-        for (const el of elements.filter(e => selectedIds.includes(e.id))) {
-          let controlPoints = [];
-          
-          if (el.type === 'text') {
-            const lines = el.text.split('\n');
-            const lineHeight = el.fontSize * 1.2;
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
-            const textWidthPx = Math.max(...lines.map(line => ctx.measureText(line).width));
-            const textHeightPx = lines.length * lineHeight;
-            const textWidth = textWidthPx / viewport.zoom;
-            const textHeight = textHeightPx / viewport.zoom;
-            
-            if (tool === 'edit') {
-              controlPoints = [
-                { x: el.x, y: el.y - textHeight, label: 'topLeft' },
-                { x: el.x + textWidth, y: el.y - textHeight, label: 'topRight' },
-                { x: el.x, y: el.y, label: 'bottomLeft' },
-                { x: el.x + textWidth, y: el.y, label: 'bottomRight' }
-              ];
-            } else {
-              controlPoints = [
-                { x: el.x, y: el.y - textHeight, label: 'topLeft' },
-                { x: el.x + textWidth, y: el.y - textHeight, label: 'topRight' },
-                { x: el.x, y: el.y, label: 'bottomLeft' },
-                { x: el.x + textWidth, y: el.y, label: 'bottomRight' },
-                { x: el.x + textWidth / 2, y: el.y - textHeight, label: 'top' },
-                { x: el.x + textWidth, y: el.y - textHeight / 2, label: 'right' },
-                { x: el.x + textWidth / 2, y: el.y, label: 'bottom' },
-                { x: el.x, y: el.y - textHeight / 2, label: 'left' }
-              ];
-              
-              const edges = [
-                { x1: el.x, y1: el.y - textHeight, x2: el.x + textWidth, y2: el.y - textHeight, label: 'top' },
-                { x1: el.x + textWidth, y1: el.y - textHeight, x2: el.x + textWidth, y2: el.y, label: 'right' },
-                { x1: el.x + textWidth, y1: el.y, x2: el.x, y2: el.y, label: 'bottom' },
-                { x1: el.x, y1: el.y, x2: el.x, y2: el.y - textHeight, label: 'left' }
-              ];
-              
-              for (const edge of edges) {
-                const dist = pointToLineDistance(point, { x: edge.x1, y: edge.y1 }, { x: edge.x2, y: edge.y2 });
-                if (dist < HOVER_DISTANCE) {
-                  const t = Math.max(0, Math.min(1, 
-                    ((point.x - edge.x1) * (edge.x2 - edge.x1) + (point.y - edge.y1) * (edge.y2 - edge.y1)) /
-                    ((edge.x2 - edge.x1) ** 2 + (edge.y2 - edge.y1) ** 2)
-                  ));
-                  snappedX = edge.x1 + t * (edge.x2 - edge.x1);
-                  snappedY = edge.y1 + t * (edge.y2 - edge.y1);
-                  foundControlPoint = true;
-                  setSnapPoint({
-                    x: snappedX,
-                    y: snappedY,
-                    type: 'controlPoint',
-                    priority: 200
-                  });
-                  break;
-                }
-              }
-              if (foundControlPoint) break;
-            }
-          } else if (el.type === 'line') {
-            controlPoints = [
-              { x: el.x1, y: el.y1, label: 'start' },
-              { x: (el.x1 + el.x2) / 2, y: (el.y1 + el.y2) / 2, label: 'middle' },
-              { x: el.x2, y: el.y2, label: 'end' }
-            ];
-          } else if (el.type === 'curve') {
-            controlPoints = [
-              { x: el.x1, y: el.y1, label: 'start' },
-              { x: el.cpx, y: el.cpy, label: 'control' },
-              { x: el.x2, y: el.y2, label: 'end' }
-            ];
-          } else if (el.type === 'rectangle') {
-            controlPoints = [
-              { x: el.x, y: el.y, label: 'topLeft' },
-              { x: el.x + el.width, y: el.y, label: 'topRight' },
-              { x: el.x, y: el.y + el.height, label: 'bottomLeft' },
-              { x: el.x + el.width, y: el.y + el.height, label: 'bottomRight' },
-              { x: el.x + el.width / 2, y: el.y, label: 'top' },
-              { x: el.x + el.width, y: el.y + el.height / 2, label: 'right' },
-              { x: el.x + el.width / 2, y: el.y + el.height, label: 'bottom' },
-              { x: el.x, y: el.y + el.height / 2, label: 'left' }
-            ];
-          } else if (el.type === 'circle') {
-            const radiusX = el.radiusX || el.radius;
-            const radiusY = el.radiusY || el.radius;
-            controlPoints = [
-              { x: el.cx + radiusX, y: el.cy, label: 'right' },
-              { x: el.cx - radiusX, y: el.cy, label: 'left' },
-              { x: el.cx, y: el.cy + radiusY, label: 'bottom' },
-              { x: el.cx, y: el.cy - radiusY, label: 'top' }
-            ];
-          } else if (el.type === 'arc') {
-            const radiusX = el.radiusX || el.radius;
-            const radiusY = el.radiusY || el.radius;
-            controlPoints = [
-              { x: el.cx + radiusX * Math.cos(el.startAngle), y: el.cy + radiusY * Math.sin(el.startAngle), label: 'start' },
-              { x: el.cx + radiusX * Math.cos(el.endAngle), y: el.cy + radiusY * Math.sin(el.endAngle), label: 'end' }
-            ];
-          }
-          
-          for (const cp of controlPoints) {
-            const dist = Math.sqrt((cp.x - point.x) ** 2 + (cp.y - point.y) ** 2);
-            if (dist < HOVER_DISTANCE) {
-              snappedX = cp.x;
-              snappedY = cp.y;
+        const selectedElements = elements.filter(e => selectedIds.includes(e.id));
+        
+        // Vérifier les control points des éléments sélectionnés
+        for (const el of selectedElements) {
+          // Pour les textes en mode select, vérifier d'abord les arêtes
+          if (el.type === 'text' && tool !== 'edit') {
+            const edgePoint = findNearestEdgePoint(point, el, viewport, 20, pointToLineDistance);
+            if (edgePoint) {
+              snappedX = edgePoint.x;
+              snappedY = edgePoint.y;
               foundControlPoint = true;
               setSnapPoint({
                 x: snappedX,
@@ -2139,29 +2025,27 @@ const CADEditor = () => {
                 type: 'controlPoint',
                 priority: 200
               });
-              
-              if (tool === 'edit') {
-                if (cp.label === 'topLeft' || cp.label === 'bottomRight') {
-                  setHoverCursor('nwse-resize');
-                } else if (cp.label === 'topRight' || cp.label === 'bottomLeft') {
-                  setHoverCursor('nesw-resize');
-                } else if (cp.label === 'top' || cp.label === 'bottom') {
-                  setHoverCursor('ns-resize');
-                } else if (cp.label === 'left' || cp.label === 'right') {
-                  setHoverCursor('ew-resize');
-                } else if (cp.label === 'middle' || cp.label === 'start' || cp.label === 'end' || cp.label === 'control') {
-                  setHoverCursor('move');
-                } else {
-                  setHoverCursor('pointer');
-                }
-              } else {
-                setHoverCursor('default');
-              }
-              
+              setHoverCursor('default');
               break;
             }
           }
-          if (foundControlPoint) break;
+          
+          // Vérifier les control points
+          const nearest = findNearestControlPoint(point, el, viewport, tool, 20);
+          if (nearest) {
+            snappedX = nearest.point.x;
+            snappedY = nearest.point.y;
+            foundControlPoint = true;
+            setSnapPoint({
+              x: snappedX,
+              y: snappedY,
+              type: 'controlPoint',
+              priority: 200
+            });
+            
+            setHoverCursor(getCursorForControlPoint(nearest.point.label, tool));
+            break;
+          }
         }
       }
 
@@ -2210,39 +2094,9 @@ const CADEditor = () => {
           setSnapPoint(null);
         }
         
-        const hoveredElement = [...elements].reverse().find(el => {
-          if (selectedIds.includes(el.id)) {
-            if (el.type === 'line') {
-              const dist = pointToLineDistance(point, { x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 });
-              return dist < 10 / viewport.zoom;
-            } else if (el.type === 'rectangle') {
-              return point.x >= el.x && point.x <= el.x + el.width &&
-                     point.y >= el.y && point.y <= el.y + el.height;
-            } else if (el.type === 'circle') {
-              const rx = el.radiusX || el.radius;
-              const ry = el.radiusY || el.radius;
-              const dx = (point.x - el.cx) / rx;
-              const dy = (point.y - el.cy) / ry;
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              return Math.abs(dist - 1) < 10 / viewport.zoom / rx;
-            } else if (el.type === 'text') {
-              const lines = el.text.split('\n');
-              const lineHeight = el.fontSize * 1.2;
-              const canvas = document.createElement('canvas');
-              const ctx = canvas.getContext('2d');
-              ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
-              const textWidthPx = Math.max(...lines.map(line => ctx.measureText(line).width));
-              const textHeightPx = lines.length * lineHeight;
-              const textWidth = textWidthPx / viewport.zoom;
-              const textHeight = textHeightPx / viewport.zoom;
-              const margin = 25 / viewport.zoom;
-              return point.x >= el.x - margin && point.x <= el.x + textWidth + margin &&
-                     point.y >= el.y - textHeight - margin && point.y <= el.y + margin;
-            }
-            return false;
-          }
-          return false;
-        });
+        const hoveredElement = [...elements].reverse().find(el => 
+          selectedIds.includes(el.id) && isPointInElement(point, el, viewport, 10, pointToLineDistance)
+        );
         
         if (hoveredElement && tool === 'select') {
           setHoverCursor('move');
