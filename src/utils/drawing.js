@@ -674,7 +674,8 @@ export const drawSnapPoint = (ctx, canvas, viewport, snapPoint, selectedIds) => 
   
   const isSpecialPoint = snapPoint.type === 'endpoint' || 
                          snapPoint.type === 'center' || 
-                         snapPoint.type === 'midpoint';
+                         snapPoint.type === 'midpoint' ||
+                         snapPoint.type === 'controlPoint';
   
   const isFromSelectedElement = snapPoint.elementId && selectedIds.includes(snapPoint.elementId);
   

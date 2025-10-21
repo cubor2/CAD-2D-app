@@ -248,12 +248,16 @@ export const findSnapPoints = (point, elements, excludeIds, viewport) => {
   return closest;
 };
 
-export const applyMultiPointSnap = (elements, selectedIds, dx, dy, snapToElements, showRulers, guides, viewport) => {
+export const applyMultiPointSnap = (elements, selectedIds, dx, dy, snapToElements, showRulers, guides, viewport, snapToGrid = true, gridSize = 1) => {
   const snapDist = SNAP_DISTANCE / viewport.zoom;
   let bestOffsetX = dx;
   let bestOffsetY = dy;
   let foundSnapX = false;
   let foundSnapY = false;
+  let snapInfoX = null;
+  let snapInfoY = null;
+  let snapPointX = null;
+  let snapPointY = null;
 
   const selectedElements = elements.filter(el => selectedIds.includes(el.id));
   
@@ -269,11 +273,15 @@ export const applyMultiPointSnap = (elements, selectedIds, dx, dy, snapToElement
             if (Math.abs(movedPoint.y - guide.position) < snapDist) {
               bestOffsetY = guide.position - point.y;
               foundSnapY = true;
+              snapInfoY = { type: 'guide', priority: 100 };
+              snapPointY = guide.position;
             }
           } else if (guide.type === 'vertical' && !foundSnapX) {
             if (Math.abs(movedPoint.x - guide.position) < snapDist) {
               bestOffsetX = guide.position - point.x;
               foundSnapX = true;
+              snapInfoX = { type: 'guide', priority: 100 };
+              snapPointX = guide.position;
             }
           }
         }
@@ -285,10 +293,14 @@ export const applyMultiPointSnap = (elements, selectedIds, dx, dy, snapToElement
           if (!foundSnapX) {
             bestOffsetX = snap.x - point.x;
             foundSnapX = true;
+            snapInfoX = snap;
+            snapPointX = snap.x;
           }
           if (!foundSnapY) {
             bestOffsetY = snap.y - point.y;
             foundSnapY = true;
+            snapInfoY = snap;
+            snapPointY = snap.y;
           }
         }
       }
@@ -299,7 +311,54 @@ export const applyMultiPointSnap = (elements, selectedIds, dx, dy, snapToElement
     if (foundSnapX && foundSnapY) break;
   }
 
-  return { dx: bestOffsetX, dy: bestOffsetY };
+  let referencePoint = null;
+  if (selectedElements.length > 0) {
+    const points = getElementSnapPoints(selectedElements[0]);
+    if (points && points.length > 0) {
+      referencePoint = points[0];
+    }
+  }
+
+  if (snapToGrid && referencePoint) {
+    if (!foundSnapX) {
+      const finalX = referencePoint.x + bestOffsetX;
+      const snappedX = Math.round(finalX / gridSize) * gridSize;
+      bestOffsetX = snappedX - referencePoint.x;
+      snapInfoX = { type: 'grid', priority: 1 };
+      snapPointX = snappedX;
+    }
+    if (!foundSnapY) {
+      const finalY = referencePoint.y + bestOffsetY;
+      const snappedY = Math.round(finalY / gridSize) * gridSize;
+      bestOffsetY = snappedY - referencePoint.y;
+      snapInfoY = { type: 'grid', priority: 1 };
+      snapPointY = snappedY;
+    }
+  }
+
+  let combinedSnapInfo = null;
+  if (snapInfoX || snapInfoY) {
+    let finalX = 0;
+    let finalY = 0;
+    
+    if (referencePoint) {
+      finalX = snapPointX !== null ? snapPointX : (referencePoint.x + bestOffsetX);
+      finalY = snapPointY !== null ? snapPointY : (referencePoint.y + bestOffsetY);
+    }
+    
+    const priorityX = snapInfoX?.priority || 0;
+    const priorityY = snapInfoY?.priority || 0;
+    const highestPrioritySnap = priorityX >= priorityY ? snapInfoX : snapInfoY;
+    
+    combinedSnapInfo = {
+      x: finalX,
+      y: finalY,
+      type: highestPrioritySnap?.type || 'combined',
+      priority: Math.max(priorityX, priorityY)
+    };
+  }
+
+  return { dx: bestOffsetX, dy: bestOffsetY, snapInfo: combinedSnapInfo };
 };
 
 

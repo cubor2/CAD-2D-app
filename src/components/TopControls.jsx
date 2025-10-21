@@ -1,8 +1,6 @@
 import React from 'react';
 
 const TopControls = React.memo(({
-  snapToGrid,
-  setSnapToGrid,
   snapToElements,
   setSnapToElements,
   showDimensions,
@@ -15,15 +13,6 @@ const TopControls = React.memo(({
 }) => {
   return (
     <div className="absolute top-9 left-1/2 transform -translate-x-1/2 bg-drawhard-beige border-2 border-drawhard-dark px-4 py-2 flex gap-3 items-center z-10 shadow-lg text-xs">
-      <label className="flex items-center gap-1 cursor-pointer">
-        <input 
-          type="checkbox" 
-          checked={snapToGrid}
-          onChange={(e) => setSnapToGrid(e.target.checked)}
-          className="cursor-pointer"
-        />
-        <span className="uppercase tracking-wide font-bold">Grille</span>
-      </label>
       <label className="flex items-center gap-1 cursor-pointer">
         <input 
           type="checkbox" 

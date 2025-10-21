@@ -1,8 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bold, Italic, RotateCw, FlipHorizontal, FlipVertical, Lock, Unlock } from 'lucide-react';
 
 const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, setElements, workArea, onWorkAreaChange, onRotate, onFlipHorizontal, onFlipVertical }) => {
   const [maintainProportions, setMaintainProportions] = useState(true);
+  const [showAnimation, setShowAnimation] = useState(true);
+
+  useEffect(() => {
+    // Réinitialiser l'animation après qu'elle soit terminée
+    const timer = setTimeout(() => {
+      setShowAnimation(false);
+    }, 1500); // Durée totale de l'animation (0.9s logo + 0.4s delay + 0.5s version)
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Bloc "Zone de travail" (toujours visible)
   const WorkAreaSection = () => (
@@ -60,10 +70,22 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, se
             <img 
               src="/laserlair-logo.png" 
               alt="LaserLair" 
-              style={{ width: '180px', height: 'auto', filter: 'brightness(0) invert(1)' }} 
+              style={{ 
+                width: '180px', 
+                height: 'auto', 
+                filter: 'brightness(0) invert(1)',
+                animation: showAnimation ? 'logoFadeInBounce 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none'
+              }} 
             />
           </div>
-          <p className="text-white text-xs absolute bottom-2 left-2">Version 1.0</p>
+          <p 
+            className="text-white text-xs absolute bottom-2 left-2"
+            style={{
+              animation: showAnimation ? 'versionSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both' : 'none'
+            }}
+          >
+            Version 1.0
+          </p>
       </div>
       <div className="flex-1">
         <WorkAreaSection />
@@ -221,10 +243,22 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, se
           <img 
             src="/laserlair-logo.png" 
             alt="LaserLair" 
-            style={{ width: '180px', height: 'auto', filter: 'brightness(0) invert(1)' }} 
+            style={{ 
+              width: '180px', 
+              height: 'auto', 
+              filter: 'brightness(0) invert(1)',
+              animation: showAnimation ? 'logoFadeInBounce 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none'
+            }} 
           />
         </div>
-        <p className="text-white text-xs absolute bottom-2 left-2">Version 1.0</p>
+        <p 
+          className="text-white text-xs absolute bottom-2 left-2"
+          style={{
+            animation: showAnimation ? 'versionSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both' : 'none'
+          }}
+        >
+          Version 1.0
+        </p>
       </div>
       <div className="flex-1">
         <WorkAreaSection />

@@ -581,3 +581,4 @@ docs(readme): mise à jour installation
 **Dernière mise à jour** : 17 Octobre 2025
 **Version** : 1.0.0
 
+
