@@ -67,7 +67,8 @@ export const getElementSnapPoints = (el) => {
         points.push({ x, y });
       }
     }
-  } else if (el.type === 'rectangle') {
+  } else if (el.type === 'rectangle' || el.type === 'text') {
+    // Les textes se comportent comme des rectangles pour le snap
     points.push(
       { x: el.x, y: el.y },
       { x: el.x + el.width, y: el.y },

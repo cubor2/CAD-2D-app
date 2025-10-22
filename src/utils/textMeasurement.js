@@ -44,7 +44,7 @@ const cleanCache = () => {
 /**
  * Mesure les dimensions d'un élément texte
  * @param {Object} textElement - Élément texte avec propriétés text, fontSize, fontFamily, etc.
- * @param {Object} viewport - Viewport avec zoom
+ * @param {Object} viewport - Viewport avec zoom (utilisé uniquement pour convertir en coordonnées monde)
  * @returns {Object} { width, height, widthPx, heightPx }
  */
 export const getTextDimensions = (textElement, viewport) => {
@@ -68,8 +68,8 @@ export const getTextDimensions = (textElement, viewport) => {
   const dimensions = {
     widthPx: textWidthPx,
     heightPx: textHeightPx,
-    width: textWidthPx / viewport.zoom,
-    height: textHeightPx / viewport.zoom
+    width: textWidthPx,
+    height: textHeightPx
   };
   
   // Stocker dans le cache

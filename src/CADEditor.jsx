@@ -13,12 +13,12 @@ import { useSelection } from './hooks/useSelection';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { screenToWorld, worldToScreen } from './utils/transforms';
 import { snapToGridFn, pointToLineDistance, isAngleBetween } from './utils/geometry';
-import { findSnapPoints, findGuideSnapPosition, applyMultiPointSnap, computeSnap } from './utils/snap';
+import { findSnapPoints, findGuideSnapPosition, computeSnap } from './utils/snap';
 import { RULER_SIZE, GRID_SIZE, GUIDE_SNAP_DISTANCE } from './constants';
 import { importSVG } from './utils/svgImporter';
 import { exportForLaser } from './utils/laserExporter';
 import { getTextDimensions, invalidateTextCache } from './utils/textMeasurement';
-import { getElementControlPoints, getTextEdges, findNearestControlPoint, findNearestEdgePoint, getCursorForControlPoint, isPointInElement } from './utils/elementGeometry';
+import { getElementControlPoints, findNearestControlPoint, getCursorForControlPoint, isPointInElement } from './utils/elementGeometry';
 
 const CADEditor = () => {
   const canvasRef = useRef(null);
@@ -42,6 +42,7 @@ const CADEditor = () => {
   const [selectionBox, setSelectionBox] = useState(null);
   const [dragStart, setDragStart] = useState(null);
   const [isDraggingElements, setIsDraggingElements] = useState(false);
+  const [dragOriginalElements, setDragOriginalElements] = useState([])
   
   const [editingPoint, setEditingPoint] = useState(null);
   const [selectedEdge, setSelectedEdge] = useState(null);
@@ -161,147 +162,6 @@ const CADEditor = () => {
     
     return textElement.text.length;
   }, [worldToScreenWrapper]);
-
-  const getTextControlPointsScreen = useCallback((textElement) => {
-    const canvas = getCanvasRef().current;
-    if (!canvas) return [];
-    
-    const pos = worldToScreenWrapper(textElement.x, textElement.y);
-    
-    const ctx = canvas.getContext('2d');
-    ctx.font = `${textElement.fontStyle} ${textElement.fontWeight} ${textElement.fontSize}px ${textElement.fontFamily}`;
-    
-    const lines = textElement.text ? textElement.text.split('\n') : [''];
-    const lineHeight = textElement.fontSize * 1.2;
-    const widths = lines.map(line => ctx.measureText(line).width);
-    const textWidth = Math.max(...widths, textElement.fontSize * 3);
-    const textHeight = lines.length * lineHeight;
-    
-    return [
-      { x: pos.x, y: pos.y - textHeight, label: 'topLeft' },
-      { x: pos.x + textWidth, y: pos.y - textHeight, label: 'topRight' },
-      { x: pos.x, y: pos.y, label: 'bottomLeft' },
-      { x: pos.x + textWidth, y: pos.y, label: 'bottomRight' },
-      { x: pos.x + textWidth / 2, y: pos.y - textHeight, label: 'top' },
-      { x: pos.x + textWidth, y: pos.y - textHeight / 2, label: 'right' },
-      { x: pos.x + textWidth / 2, y: pos.y, label: 'bottom' },
-      { x: pos.x, y: pos.y - textHeight / 2, label: 'left' }
-    ];
-  }, [worldToScreenWrapper]);
-
-  const handleTextResize = useCallback((textElement, handle, dx, dy) => {
-    const canvas = getCanvasRef().current;
-    if (!canvas) return textElement;
-    
-    const ctx = canvas.getContext('2d');
-    ctx.font = `${textElement.fontStyle} ${textElement.fontWeight} ${textElement.fontSize}px ${textElement.fontFamily}`;
-    
-    const lines = textElement.text ? textElement.text.split('\n') : [''];
-    const lineHeight = textElement.fontSize * 1.2;
-    const widths = lines.map(line => ctx.measureText(line).width);
-    const oldTextWidthPx = Math.max(...widths, textElement.fontSize * 3);
-    const oldTextHeightPx = lines.length * lineHeight;
-    
-    const oldWidthWorld = oldTextWidthPx / viewport.zoom;
-    const oldHeightWorld = oldTextHeightPx / viewport.zoom;
-    
-    const topLeft = { x: textElement.x, y: textElement.y - oldHeightWorld };
-    const topRight = { x: textElement.x + oldWidthWorld, y: textElement.y - oldHeightWorld };
-    const bottomLeft = { x: textElement.x, y: textElement.y };
-    const bottomRight = { x: textElement.x + oldWidthWorld, y: textElement.y };
-    
-    const dxScreen = dx * viewport.zoom;
-    const dyScreen = dy * viewport.zoom;
-    
-    let scaleX = 1;
-    let scaleY = 1;
-    
-    switch (handle) {
-      case 'topLeft':
-        scaleX = Math.max(0.1, (oldTextWidthPx - dxScreen) / oldTextWidthPx);
-        scaleY = Math.max(0.1, (oldTextHeightPx - dyScreen) / oldTextHeightPx);
-        break;
-      case 'topRight':
-        scaleX = Math.max(0.1, (oldTextWidthPx + dxScreen) / oldTextWidthPx);
-        scaleY = Math.max(0.1, (oldTextHeightPx - dyScreen) / oldTextHeightPx);
-        break;
-      case 'bottomLeft':
-        scaleX = Math.max(0.1, (oldTextWidthPx - dxScreen) / oldTextWidthPx);
-        scaleY = Math.max(0.1, (oldTextHeightPx + dyScreen) / oldTextHeightPx);
-        break;
-      case 'bottomRight':
-        scaleX = Math.max(0.1, (oldTextWidthPx + dxScreen) / oldTextWidthPx);
-        scaleY = Math.max(0.1, (oldTextHeightPx + dyScreen) / oldTextHeightPx);
-        break;
-      case 'top':
-        scaleY = Math.max(0.1, (oldTextHeightPx - dyScreen) / oldTextHeightPx);
-        break;
-      case 'right':
-        scaleX = Math.max(0.1, (oldTextWidthPx + dxScreen) / oldTextWidthPx);
-        break;
-      case 'bottom':
-        scaleY = Math.max(0.1, (oldTextHeightPx + dyScreen) / oldTextHeightPx);
-        break;
-      case 'left':
-        scaleX = Math.max(0.1, (oldTextWidthPx - dxScreen) / oldTextWidthPx);
-        break;
-    }
-    
-    const scale = Math.min(scaleX, scaleY);
-    const newFontSize = Math.max(6, Math.min(200, textElement.fontSize * scale));
-    
-    const newLineHeight = newFontSize * 1.2;
-    const newTextHeightPx = lines.length * newLineHeight;
-    const newTextWidthPx = oldTextWidthPx * (newFontSize / textElement.fontSize);
-    
-    const newWidthWorld = newTextWidthPx / viewport.zoom;
-    const newHeightWorld = newTextHeightPx / viewport.zoom;
-    
-    let newX = textElement.x;
-    let newY = textElement.y;
-    
-    switch (handle) {
-      case 'topLeft':
-        newX = bottomRight.x - newWidthWorld;
-        newY = bottomRight.y;
-        break;
-      case 'topRight':
-        newX = bottomLeft.x;
-        newY = bottomLeft.y;
-        break;
-      case 'bottomLeft':
-        newX = topRight.x - newWidthWorld;
-        newY = topRight.y + newHeightWorld;
-        break;
-      case 'bottomRight':
-        newX = topLeft.x;
-        newY = topLeft.y + newHeightWorld;
-        break;
-      case 'top':
-        newX = textElement.x;
-        newY = bottomLeft.y;
-        break;
-      case 'bottom':
-        newX = textElement.x;
-        newY = topLeft.y + newHeightWorld;
-        break;
-      case 'left':
-        newX = topRight.x - newWidthWorld;
-        newY = textElement.y;
-        break;
-      case 'right':
-        newX = topLeft.x;
-        newY = textElement.y;
-        break;
-    }
-    
-    return {
-      ...textElement,
-      x: newX,
-      y: newY,
-      fontSize: newFontSize
-    };
-  }, [worldToScreenWrapper, viewport]);
 
   const updateSnapPointForDrag = (snapInfo) => {
     if (!snapInfo) {
@@ -1335,25 +1195,12 @@ const CADEditor = () => {
       return;
     }
     
+    const snapped = applySnap(point);
+    
+    // Vérifier la création de nouveaux guides depuis la règle (priorité haute)
     if (showRulers) {
       const borderWidth = 10;
       const rulerZoneSize = RULER_SIZE + borderWidth;
-      const guideClickDist = 5;
-      for (const guide of guides) {
-        if (guide.type === 'horizontal') {
-          const screenY = worldToScreenWrapper(0, guide.position).y;
-          if (Math.abs(canvasY - screenY) < guideClickDist) {
-            setIsDraggingGuide(guide.id);
-            return;
-          }
-        } else {
-          const screenX = worldToScreenWrapper(guide.position, 0).x;
-          if (Math.abs(canvasX - screenX) < guideClickDist) {
-            setIsDraggingGuide(guide.id);
-            return;
-          }
-        }
-      }
       
       if (canvasX >= borderWidth && canvasX < rulerZoneSize && canvasY > rulerZoneSize) {
         const newGuide = { type: 'vertical', position: point.x, id: Date.now() };
@@ -1367,8 +1214,6 @@ const CADEditor = () => {
         return;
       }
     }
-    
-    const snapped = applySnap(point);
 
     if (e.button === 1 || (e.button === 0 && spacePressed)) {
       startPan(e.clientX, e.clientY);
@@ -1396,6 +1241,7 @@ const CADEditor = () => {
           }
           return minDist < 10 / viewport.zoom;
         } else if (el.type === 'rectangle') {
+          // Sélection par l'intérieur OU les bords
           return snapped.x >= el.x && snapped.x <= el.x + el.width &&
                  snapped.y >= el.y && snapped.y <= el.y + el.height;
         } else if (el.type === 'circle') {
@@ -1446,17 +1292,48 @@ const CADEditor = () => {
         setLastClickTime(currentTime);
         setLastClickedId(clicked.id);
         
+        let elementsToSelect = selectedIds.includes(clicked.id) ? selectedIds : [clicked.id];
+        
         if (e.shiftKey) {
           toggleSelection(clicked.id);
+          elementsToSelect = selectedIds.includes(clicked.id) 
+            ? selectedIds.filter(id => id !== clicked.id)
+            : [...selectedIds, clicked.id];
         } else if (!selectedIds.includes(clicked.id)) {
-          if (!selectGroup(clicked.id)) {
+          const groupSelected = selectGroup(clicked.id);
+          if (!groupSelected) {
             setSelectedIds([clicked.id]);
+            elementsToSelect = [clicked.id];
+          } else {
+            elementsToSelect = selectedIds;
           }
         }
+        
         setDragStart({ x: snapped.x, y: snapped.y });
         setIsDraggingElements(true);
+        setDragOriginalElements(elements.filter(el => elementsToSelect.includes(el.id)));
         setSnapPoint(null);
       } else {
+        // Vérifier si on clique sur un guide existant (priorité basse)
+        if (showRulers) {
+          const guideClickDist = 2; // Distance réduite pour moins de "stickiness"
+          for (const guide of guides) {
+            if (guide.type === 'horizontal') {
+              const screenY = worldToScreenWrapper(0, guide.position).y;
+              if (Math.abs(canvasY - screenY) < guideClickDist) {
+                setIsDraggingGuide(guide.id);
+                return;
+              }
+            } else {
+              const screenX = worldToScreenWrapper(guide.position, 0).x;
+              if (Math.abs(canvasX - screenX) < guideClickDist) {
+                setIsDraggingGuide(guide.id);
+                return;
+              }
+            }
+          }
+        }
+        
         if (!e.shiftKey) {
           clearSelection();
         }
@@ -1530,61 +1407,36 @@ const CADEditor = () => {
           setLastClickTime(currentTime);
           setLastClickedId(el.id);
           
-          const lines = el.text.split('\n');
-          const lineHeight = el.fontSize * 1.2;
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
-          const textWidthPx = Math.max(...lines.map(line => ctx.measureText(line).width));
-          const textHeightPx = lines.length * lineHeight;
-          const textWidth = textWidthPx / viewport.zoom;
-          const textHeight = textHeightPx / viewport.zoom;
+          controlPoints = getElementControlPoints(el, viewport);
           
-          const controlPointsWorld = [
-            { x: el.x, y: el.y - textHeight, label: 'topLeft' },
-            { x: el.x + textWidth, y: el.y - textHeight, label: 'topRight' },
-            { x: el.x, y: el.y, label: 'bottomLeft' },
-            { x: el.x + textWidth, y: el.y, label: 'bottomRight' },
-            { x: el.x + textWidth / 2, y: el.y - textHeight, label: 'top' },
-            { x: el.x + textWidth, y: el.y - textHeight / 2, label: 'right' },
-            { x: el.x + textWidth / 2, y: el.y, label: 'bottom' },
-            { x: el.x, y: el.y - textHeight / 2, label: 'left' }
-          ];
-          
-          for (const cp of controlPointsWorld) {
+          for (const cp of controlPoints) {
             const dist = Math.sqrt((cp.x - snapped.x) ** 2 + (cp.y - snapped.y) ** 2);
             
             if (dist < CLICK_DISTANCE) {
-                setEditingPoint({
-                  elementId: el.id,
-                  pointType: cp.label,
-                  originalElement: JSON.parse(JSON.stringify(el)),
+              setEditingPoint({
+                elementId: el.id,
+                pointType: cp.label,
+                originalElement: JSON.parse(JSON.stringify(el)),
                 startPoint: { x: snapped.x, y: snapped.y }
-                });
+              });
               setDragStart({ x: snapped.x, y: snapped.y });
               setSnapPoint(null);
-                return;
+              return;
             }
           }
           
           if (!editingTextId || editingTextId !== el.id) {
-            const canvasElem = getCanvasRef().current;
-            if (canvasElem) {
-            const pos = worldToScreenWrapper(el.x, el.y);
-            const clickScreen = worldToScreenWrapper(snapped.x, snapped.y);
+            const isInsideRect = snapped.x >= el.x && snapped.x <= el.x + el.width &&
+                                 snapped.y >= el.y && snapped.y <= el.y + el.height;
             
-            const isInsideText = clickScreen.x >= pos.x && clickScreen.x <= pos.x + textWidth &&
-                                 clickScreen.y >= pos.y - textHeight && clickScreen.y <= pos.y;
-            
-            if (isInsideText) {
+            if (isInsideRect) {
               setEditingTextId(el.id);
               const cursorPos = getTextCursorPositionFromClick(el, snapped);
               setTextCursorPosition(cursorPos);
               setTextSelectionStart(cursorPos);
               setTextSelectionEnd(cursorPos);
-                setSnapPoint(null);
+              setSnapPoint(null);
               return;
-              }
             }
           }
         } else if (el.type === 'line') {
@@ -1740,6 +1592,20 @@ const CADEditor = () => {
         }
       }
 
+      // Vérifier si on clique à l'intérieur d'un rectangle ou texte déjà sélectionné (pour le déplacer)
+      for (const el of elements.filter(e => selectedIds.includes(e.id) && (e.type === 'rectangle' || e.type === 'text'))) {
+        const isInsideElement = snapped.x >= el.x && snapped.x <= el.x + el.width &&
+                                snapped.y >= el.y && snapped.y <= el.y + el.height;
+        
+        if (isInsideElement) {
+          setIsDraggingElements(true);
+          setDragStart({ x: snapped.x, y: snapped.y });
+          setDragOriginalElements(elements.filter(e => selectedIds.includes(e.id)));
+          setSnapPoint(null);
+          return;
+        }
+      }
+
       for (const el of elements) {
         if (selectedIds.includes(el.id)) continue;
         
@@ -1838,24 +1704,9 @@ const CADEditor = () => {
           const clickAngle = Math.atan2(dy, dx);
           return isAngleBetween(clickAngle, el.startAngle, el.endAngle);
         } else if (el.type === 'text') {
-          const canvas = getCanvasRef().current;
-          if (!canvas) return false;
-          
-          const pos = worldToScreenWrapper(el.x, el.y);
-          const clickScreen = worldToScreenWrapper(snapped.x, snapped.y);
-          
-          const ctx = canvas.getContext('2d');
-          ctx.save();
-          ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
-          const lines = el.text ? el.text.split('\n') : [''];
-          const lineHeight = el.fontSize * 1.2;
-          const widths = lines.map(line => ctx.measureText(line).width);
-          const textWidth = Math.max(...widths, el.fontSize * 3);
-          const textHeight = Math.max(lines.length * lineHeight, el.fontSize);
-          ctx.restore();
-          
-          return clickScreen.x >= pos.x && clickScreen.x <= pos.x + textWidth &&
-                 clickScreen.y >= pos.y - textHeight && clickScreen.y <= pos.y;
+          // Sélection par l'intérieur OU les bords (comme les rectangles)
+          return snapped.x >= el.x && snapped.x <= el.x + el.width &&
+                 snapped.y >= el.y && snapped.y <= el.y + el.height;
         }
         return false;
       });
@@ -1887,24 +1738,25 @@ const CADEditor = () => {
     }
 
     if (tool === 'text') {
-      const newText = {
+      setIsDrawing(true);
+      setStartPoint(snapped);
+      setDrawOrigin(snapped);
+      setCurrentElement({
         id: getNextId(),
         type: 'text',
         x: snapped.x,
         y: snapped.y,
+        width: 0,
+        height: 0,
         text: 'Texte',
         fontSize: 30,
         fontFamily: 'Arial',
         fontWeight: 'normal',
         fontStyle: 'normal',
-        fill: '#000000'
-      };
-      updateElements([...elements, newText]);
-      setSelectedIds([newText.id]);
-      setEditingTextId(newText.id);
-      setTextCursorPosition(newText.text.length);
-      setTextSelectionStart(0);
-      setTextSelectionEnd(newText.text.length);
+        fill: '#000000',
+        textAlign: 'center',
+        verticalAlign: 'middle'
+      });
       setSnapPoint(null);
       return;
     }
@@ -1918,7 +1770,7 @@ const CADEditor = () => {
       ...snapped
     });
     setSnapPoint(null);
-  }, [showRulers, guides, worldToScreenWrapper, spacePressed, startPan, tool, elements, viewport, selectedIds, toggleSelection, selectGroup, setSelectedIds, clearSelection, getNextId, applySnap, screenToWorldWrapper, pointToLineDistance, isAngleBetween, setSelectedEdge, setEditingPoint, darkMode, updateElements, getTextControlPointsScreen, editingTextId, getTextCursorPositionFromClick, setEditingTextId, setTextCursorPosition, setTextSelectionStart, setTextSelectionEnd, setIsDraggingTextSelection, setTool, setDragStart, lastClickTime, lastClickedId]);
+  }, [showRulers, guides, worldToScreenWrapper, spacePressed, startPan, tool, elements, viewport, selectedIds, toggleSelection, selectGroup, setSelectedIds, clearSelection, getNextId, applySnap, screenToWorldWrapper, pointToLineDistance, isAngleBetween, setSelectedEdge, setEditingPoint, darkMode, updateElements, editingTextId, getTextCursorPositionFromClick, setEditingTextId, setTextCursorPosition, setTextSelectionStart, setTextSelectionEnd, setIsDraggingTextSelection, setTool, setDragStart, lastClickTime, lastClickedId]);
 
   const handleMouseMove = useCallback((e) => {
     const canvas = getCanvasRef().current;
@@ -1960,30 +1812,12 @@ const CADEditor = () => {
       let snappedY = point.y;
       let foundControlPoint = false;
 
-      if (selectedIds.length > 0) {
+      if (selectedIds.length > 0 && tool !== 'text') {
         const selectedElements = elements.filter(e => selectedIds.includes(e.id));
         
         // Vérifier les control points des éléments sélectionnés
         for (const el of selectedElements) {
-          // Pour les textes en mode select, vérifier d'abord les arêtes
-          if (el.type === 'text' && tool !== 'edit') {
-            const edgePoint = findNearestEdgePoint(point, el, viewport, 20, pointToLineDistance);
-            if (edgePoint) {
-              snappedX = edgePoint.x;
-              snappedY = edgePoint.y;
-              foundControlPoint = true;
-              setSnapPoint({
-                x: snappedX,
-                y: snappedY,
-                type: 'controlPoint',
-                priority: 200
-              });
-              setHoverCursor('default');
-              break;
-            }
-          }
-          
-          // Vérifier les control points
+          // Vérifier les control points (même logique pour tous les types d'éléments)
           const nearest = findNearestControlPoint(point, el, viewport, tool, 20);
           if (nearest) {
             snappedX = nearest.point.x;
@@ -2029,7 +1863,7 @@ const CADEditor = () => {
       }
     }
 
-    if (tool === 'edit' && isDraggingTextSelection && editingTextId) {
+    if ((tool === 'edit' || tool === 'text') && isDraggingTextSelection && editingTextId) {
       const snapped = applySnap(point, [editingTextId], false);
       updateSnapPointForDrag(snapped.snapInfo);
       const textEl = elements.find(e => e.id === editingTextId);
@@ -2072,124 +1906,10 @@ const CADEditor = () => {
       const el = elements.find(e => e.id === editingPoint.elementId);
       if (!el) return;
 
-      if (el.type === 'text') {
-        const dx = snapped.x - dragStart.x;
-        const dy = snapped.y - dragStart.y;
-        const resizedText = handleTextResize(editingPoint.originalElement, editingPoint.pointType, dx, dy);
-        
-        const lines = resizedText.text.split('\n');
-        const lineHeight = resizedText.fontSize * 1.2;
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.font = `${resizedText.fontStyle} ${resizedText.fontWeight} ${resizedText.fontSize}px ${resizedText.fontFamily}`;
-        const textWidthPx = Math.max(...lines.map(line => ctx.measureText(line).width));
-        const textHeightPx = lines.length * lineHeight;
-        const textWidth = textWidthPx / viewport.zoom;
-        const textHeight = textHeightPx / viewport.zoom;
-        
-        let cornerX = snapped.x;
-        let cornerY = snapped.y;
-        if (editingPoint.pointType === 'topLeft') {
-          cornerX = resizedText.x;
-          cornerY = resizedText.y - textHeight;
-        } else if (editingPoint.pointType === 'topRight') {
-          cornerX = resizedText.x + textWidth;
-          cornerY = resizedText.y - textHeight;
-        } else if (editingPoint.pointType === 'bottomLeft') {
-          cornerX = resizedText.x;
-          cornerY = resizedText.y;
-        } else if (editingPoint.pointType === 'bottomRight') {
-          cornerX = resizedText.x + textWidth;
-          cornerY = resizedText.y;
-        }
-        
-        updateSnapPointForDrag(snapped.snapInfo);
-        
-        setElements(prev => prev.map(item =>
-          item.id === el.id ? resizedText : item
-        ));
-      } else if (el.type === 'line') {
-        updateSnapPointForDrag(snapped.snapInfo);
-        
-        if (editingPoint.pointType === 'start') {
-          let newX = snapped.x;
-          let newY = snapped.y;
-          
-          if (e.shiftKey) {
-            const dx = newX - el.x2;
-            const dy = newY - el.y2;
-            const angle = Math.atan2(dy, dx);
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
-            newX = el.x2 + distance * Math.cos(snapAngle);
-            newY = el.y2 + distance * Math.sin(snapAngle);
-          }
-          
-          setElements(prev => prev.map(item =>
-            item.id === el.id ? { ...item, x1: newX, y1: newY } : item
-          ));
-        } else if (editingPoint.pointType === 'end') {
-          let newX = snapped.x;
-          let newY = snapped.y;
-          
-          if (e.shiftKey) {
-            const dx = newX - el.x1;
-            const dy = newY - el.y1;
-            const angle = Math.atan2(dy, dx);
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
-            newX = el.x1 + distance * Math.cos(snapAngle);
-            newY = el.y1 + distance * Math.sin(snapAngle);
-          }
-          
-          setElements(prev => prev.map(item =>
-            item.id === el.id ? { ...item, x2: newX, y2: newY } : item
-          ));
-        } else if (editingPoint.pointType === 'middle') {
-          setElements(prev => prev.map(item => {
-            if (item.id === el.id) {
-              return {
-                id: item.id,
-                type: 'curve',
-                x1: item.x1,
-                y1: item.y1,
-                x2: item.x2,
-                y2: item.y2,
-                cpx: snapped.x,
-                cpy: snapped.y,
-                stroke: item.stroke || '#2B2B2B',
-                strokeWidth: item.strokeWidth || 1.5
-              };
-            }
-            return item;
-          }));
-          
-          setEditingPoint(prev => ({
-            ...prev,
-            pointType: 'control'
-          }));
-        }
-      } else if (el.type === 'curve') {
-        updateSnapPointForDrag(snapped.snapInfo);
-        
-        if (editingPoint.pointType === 'start') {
-          setElements(prev => prev.map(item =>
-            item.id === el.id ? { ...item, x1: snapped.x, y1: snapped.y } : item
-          ));
-        } else if (editingPoint.pointType === 'end') {
-          setElements(prev => prev.map(item =>
-            item.id === el.id ? { ...item, x2: snapped.x, y2: snapped.y } : item
-          ));
-        } else if (editingPoint.pointType === 'control') {
-          setElements(prev => prev.map(item =>
-            item.id === el.id ? { ...item, cpx: snapped.x, cpy: snapped.y } : item
-          ));
-        }
-      } else if (el.type === 'rectangle') {
+      if (el.type === 'text' || el.type === 'rectangle') {
         updateSnapPointForDrag(snapped.snapInfo);
         
         const orig = editingPoint.originalElement;
-        const aspectRatio = orig.width / orig.height;
         const origCenterX = orig.x + orig.width / 2;
         const origCenterY = orig.y + orig.height / 2;
         
@@ -2205,7 +1925,7 @@ const CADEditor = () => {
             newHeight = Math.round(orig.height * scale / GRID_SIZE) * GRID_SIZE;
             const newX = Math.round((origCenterX - newWidth / 2) / GRID_SIZE) * GRID_SIZE;
             const newY = Math.round((origCenterY - newHeight / 2) / GRID_SIZE) * GRID_SIZE;
-          setElements(prev => prev.map(item =>
+            setElements(prev => prev.map(item =>
               item.id === el.id ? { ...item, x: newX, y: newY, width: newWidth, height: newHeight } : item
             ));
           } else {
@@ -2346,6 +2066,83 @@ const CADEditor = () => {
             ));
           }
         }
+      } else if (el.type === 'line') {
+        updateSnapPointForDrag(snapped.snapInfo);
+        
+        if (editingPoint.pointType === 'start') {
+          let newX = snapped.x;
+          let newY = snapped.y;
+          
+          if (e.shiftKey) {
+            const dx = newX - el.x2;
+            const dy = newY - el.y2;
+            const angle = Math.atan2(dy, dx);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+            newX = el.x2 + distance * Math.cos(snapAngle);
+            newY = el.y2 + distance * Math.sin(snapAngle);
+          }
+          
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, x1: newX, y1: newY } : item
+          ));
+        } else if (editingPoint.pointType === 'end') {
+          let newX = snapped.x;
+          let newY = snapped.y;
+          
+          if (e.shiftKey) {
+            const dx = newX - el.x1;
+            const dy = newY - el.y1;
+            const angle = Math.atan2(dy, dx);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+            newX = el.x1 + distance * Math.cos(snapAngle);
+            newY = el.y1 + distance * Math.sin(snapAngle);
+          }
+          
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, x2: newX, y2: newY } : item
+          ));
+        } else if (editingPoint.pointType === 'middle') {
+          setElements(prev => prev.map(item => {
+            if (item.id === el.id) {
+              return {
+                id: item.id,
+                type: 'curve',
+                x1: item.x1,
+                y1: item.y1,
+                x2: item.x2,
+                y2: item.y2,
+                cpx: snapped.x,
+                cpy: snapped.y,
+                stroke: item.stroke || '#2B2B2B',
+                strokeWidth: item.strokeWidth || 1.5
+              };
+            }
+            return item;
+          }));
+          
+          setEditingPoint(prev => ({
+            ...prev,
+            pointType: 'control'
+          }));
+        }
+      } else if (el.type === 'curve') {
+        updateSnapPointForDrag(snapped.snapInfo);
+        
+        if (editingPoint.pointType === 'start') {
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, x1: snapped.x, y1: snapped.y } : item
+          ));
+        } else if (editingPoint.pointType === 'end') {
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, x2: snapped.x, y2: snapped.y } : item
+          ));
+        } else if (editingPoint.pointType === 'control') {
+          setElements(prev => prev.map(item =>
+            item.id === el.id ? { ...item, cpx: snapped.x, cpy: snapped.y } : item
+          ));
+        }
       } else if (el.type === 'circle') {
         updateSnapPointForDrag(snapped.snapInfo);
         
@@ -2428,46 +2225,49 @@ const CADEditor = () => {
       return;
     }
 
-    if (tool === 'select' && dragStart && selectedIds.length > 0 && isDraggingElements) {
-      const snapped = applySnap(point, [], false);
-      const rawDx = snapped.x - dragStart.x;
-      const rawDy = snapped.y - dragStart.y;
+    if (tool === 'select' && dragStart && selectedIds.length > 0 && isDraggingElements && dragOriginalElements.length > 0) {
+      const currentMouseWorld = screenToWorldWrapper(e.clientX, e.clientY);
       
-      const { dx, dy, snapInfo } = applyMultiPointSnap(elements, selectedIds, rawDx, rawDy, snapToElements, showRulers, guides, viewport, snapToGrid, GRID_SIZE);
+      const snappedMouse = computeSnap(currentMouseWorld, {
+        elements,
+        excludeIds: selectedIds,
+        viewport,
+        guides,
+        showRulers,
+        snapToElements,
+        snapToGrid,
+        gridSize: GRID_SIZE
+      });
       
-      const finalMouseX = dragStart.x + dx;
-      const finalMouseY = dragStart.y + dy;
-      const mouseSnapInfo = snapInfo ? {
-        ...snapInfo,
-        x: finalMouseX,
-        y: finalMouseY
-      } : {
-        x: finalMouseX,
-        y: finalMouseY,
-        type: 'grid',
-        priority: 1
-      };
-      updateSnapPointForDrag(mouseSnapInfo);
+      const dx = snappedMouse.x - dragStart.x;
+      const dy = snappedMouse.y - dragStart.y;
+      
+      updateSnapPointForDrag({
+        x: snappedMouse.x,
+        y: snappedMouse.y,
+        type: snappedMouse.snapInfo?.type || 'grid',
+        priority: snappedMouse.snapInfo?.priority || 1
+      });
       
       setElements(prev => prev.map(el => {
-        if (!selectedIds.includes(el.id)) return el;
+        const originalEl = dragOriginalElements.find(orig => orig.id === el.id);
+        if (!originalEl) return el;
         
         if (el.type === 'line') {
-          return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
+          return { ...el, x1: originalEl.x1 + dx, y1: originalEl.y1 + dy, x2: originalEl.x2 + dx, y2: originalEl.y2 + dy };
         } else if (el.type === 'curve') {
-          return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy, cpx: el.cpx + dx, cpy: el.cpy + dy };
+          return { ...el, x1: originalEl.x1 + dx, y1: originalEl.y1 + dy, x2: originalEl.x2 + dx, y2: originalEl.y2 + dy, cpx: originalEl.cpx + dx, cpy: originalEl.cpy + dy };
         } else if (el.type === 'rectangle') {
-          return { ...el, x: el.x + dx, y: el.y + dy };
+          return { ...el, x: originalEl.x + dx, y: originalEl.y + dy };
         } else if (el.type === 'circle') {
-          return { ...el, cx: el.cx + dx, cy: el.cy + dy };
+          return { ...el, cx: originalEl.cx + dx, cy: originalEl.cy + dy };
         } else if (el.type === 'arc') {
-          return { ...el, cx: el.cx + dx, cy: el.cy + dy };
+          return { ...el, cx: originalEl.cx + dx, cy: originalEl.cy + dy };
         } else if (el.type === 'text') {
-          return { ...el, x: el.x + dx, y: el.y + dy };
+          return { ...el, x: originalEl.x + dx, y: originalEl.y + dy };
         }
         return el;
       }));
-      setDragStart({ x: dragStart.x + dx, y: dragStart.y + dy });
     }
 
     if (selectionBox && dragStart) {
@@ -2502,7 +2302,7 @@ const CADEditor = () => {
           x2: endX,
           y2: endY
         });
-      } else if (tool === 'rectangle') {
+      } else if (tool === 'rectangle' || tool === 'text') {
         const width = snapped.x - startPoint.x;
         const height = snapped.y - startPoint.y;
         setCurrentElement({
@@ -2537,7 +2337,7 @@ const CADEditor = () => {
         }
       }
     }
-  }, [isDraggingGuide, guides, elements, viewport, setGuides, setSnapPoint, isPanning, handlePan, tool, dragStart, selectedIds, isDraggingElements, snapToElements, showRulers, setElements, selectionBox, isDrawing, startPoint, currentElement, screenToWorldWrapper, applySnap, editingPoint, editingTextId, isDraggingTextSelection, isDraggingEdge, edgeOriginalElement, selectedEdge, handleTextResize, getTextCursorPositionFromClick, setTextCursorPosition, setTextSelectionEnd, worldToScreenWrapper, setIsDraggingTextSelection]);
+  }, [isDraggingGuide, guides, elements, viewport, setGuides, setSnapPoint, isPanning, handlePan, tool, dragStart, selectedIds, isDraggingElements, dragOriginalElements, snapToElements, showRulers, setElements, selectionBox, isDrawing, startPoint, currentElement, screenToWorldWrapper, applySnap, editingPoint, editingTextId, isDraggingTextSelection, isDraggingEdge, edgeOriginalElement, selectedEdge, getTextCursorPositionFromClick, setTextCursorPosition, setTextSelectionEnd, worldToScreenWrapper, setIsDraggingTextSelection]);
 
   const handleMouseUp = useCallback(() => {
     if (isDraggingGuide) {
@@ -2637,8 +2437,56 @@ const CADEditor = () => {
     }
 
     if (isDrawing && currentElement) {
-      const newElements = [...elements, currentElement];
+      let elementToAdd = currentElement;
+      
+      if (currentElement.type === 'text' || currentElement.type === 'rectangle') {
+        if (currentElement.width < 0) {
+          elementToAdd = {
+            ...elementToAdd,
+            x: elementToAdd.x + elementToAdd.width,
+            width: -elementToAdd.width
+          };
+        }
+        if (currentElement.height < 0) {
+          elementToAdd = {
+            ...elementToAdd,
+            y: elementToAdd.y + elementToAdd.height,
+            height: -elementToAdd.height
+          };
+        }
+      }
+      
+      if (elementToAdd.type === 'text') {
+        const minSize = 10 / viewport.zoom;
+        if (elementToAdd.width < minSize || elementToAdd.height < minSize) {
+          setCurrentElement(null);
+          setIsDrawing(false);
+          setStartPoint(null);
+          setDrawOrigin(null);
+          setSnapPoint(null);
+          return;
+        }
+        
+        const heightInWorld = elementToAdd.height;
+        const calculatedFontSize = Math.max(8, Math.min(200, Math.round(heightInWorld * 0.6)));
+        elementToAdd = {
+          ...elementToAdd,
+          fontSize: calculatedFontSize
+        };
+      }
+      
+      const newElements = [...elements, elementToAdd];
       updateElements(newElements);
+      
+      if (elementToAdd.type === 'text') {
+        setSelectedIds([elementToAdd.id]);
+        setEditingTextId(elementToAdd.id);
+        setTextCursorPosition(elementToAdd.text.length);
+        setTextSelectionStart(0);
+        setTextSelectionEnd(elementToAdd.text.length);
+        setTool('edit');
+      }
+      
       setCurrentElement(null);
       setIsDrawing(false);
       setStartPoint(null);
@@ -2648,9 +2496,10 @@ const CADEditor = () => {
 
     setDragStart(null);
     setIsDraggingElements(false);
+    setDragOriginalElements([]);
     setSnapPoint(null);
     setHoverCursor('default');
-  }, [isDraggingGuide, showRulers, guides, worldToScreenWrapper, setGuides, setSnapPoint, isPanning, endPan, editingPoint, setEditingPoint, isDraggingEdge, selectionBox, dragStart, elements, setSelectedIds, isDrawing, currentElement, updateElements, isDraggingTextSelection, setIsDraggingTextSelection]);
+  }, [isDraggingElements, isDraggingGuide, showRulers, guides, worldToScreenWrapper, setGuides, setSnapPoint, isPanning, endPan, editingPoint, setEditingPoint, isDraggingEdge, selectionBox, dragStart, elements, setSelectedIds, isDrawing, currentElement, updateElements, isDraggingTextSelection, setIsDraggingTextSelection, selectedIds, setElements]);
 
   const handleWheel = useCallback((e) => {
     if (e.shiftKey) {

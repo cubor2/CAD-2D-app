@@ -1,21 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bold, Italic, RotateCw, FlipHorizontal, FlipVertical, Lock, Unlock } from 'lucide-react';
 
-const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, setElements, workArea, onWorkAreaChange, onRotate, onFlipHorizontal, onFlipVertical }) => {
-  const [maintainProportions, setMaintainProportions] = useState(true);
-  const [showAnimation, setShowAnimation] = useState(true);
-
-  useEffect(() => {
-    // Réinitialiser l'animation après qu'elle soit terminée
-    const timer = setTimeout(() => {
-      setShowAnimation(false);
-    }, 1500); // Durée totale de l'animation (0.9s logo + 0.4s delay + 0.5s version)
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Bloc "Zone de travail" (toujours visible)
-  const WorkAreaSection = () => (
+const WorkAreaSection = ({ workArea, onWorkAreaChange, workAreaWidthInput, setWorkAreaWidthInput, workAreaHeightInput, setWorkAreaHeightInput }) => (
     <div className="pb-3">
       <h4 className="text-sm font-bold pt-3 mb-3 uppercase tracking-extra-wide text-center px-4">Zone de travail</h4>
       <div className="space-y-2 px-4">
@@ -23,10 +9,18 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, se
           <label className="text-xs text-drawhard-hover block mb-1 text-left">Largeur (mm)</label>
           <input 
             type="number"
-            value={Math.round(workArea.width)}
-            onChange={(e) => {
-              const newWidth = parseInt(e.target.value) || 0;
-              onWorkAreaChange({ ...workArea, width: newWidth });
+            value={workAreaWidthInput}
+            onChange={(e) => setWorkAreaWidthInput(e.target.value)}
+            onBlur={() => {
+              const newWidth = parseInt(workAreaWidthInput) || 1;
+              onWorkAreaChange({ ...workArea, width: Math.max(1, newWidth) });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const newWidth = parseInt(workAreaWidthInput) || 1;
+                onWorkAreaChange({ ...workArea, width: Math.max(1, newWidth) });
+                e.target.blur();
+              }
             }}
             className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-dark"
             min="1"
@@ -37,10 +31,18 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, se
           <label className="text-xs text-drawhard-hover block mb-1 text-left">Hauteur (mm)</label>
           <input 
             type="number"
-            value={Math.round(workArea.height)}
-            onChange={(e) => {
-              const newHeight = parseInt(e.target.value) || 0;
-              onWorkAreaChange({ ...workArea, height: newHeight });
+            value={workAreaHeightInput}
+            onChange={(e) => setWorkAreaHeightInput(e.target.value)}
+            onBlur={() => {
+              const newHeight = parseInt(workAreaHeightInput) || 1;
+              onWorkAreaChange({ ...workArea, height: Math.max(1, newHeight) });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const newHeight = parseInt(workAreaHeightInput) || 1;
+                onWorkAreaChange({ ...workArea, height: Math.max(1, newHeight) });
+                e.target.blur();
+              }
             }}
             className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-dark"
             min="1"
@@ -60,7 +62,22 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, se
         </div>
       </div>
     </div>
-  );
+);
+
+const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, setElements, workArea, onWorkAreaChange, onRotate, onFlipHorizontal, onFlipVertical }) => {
+  const [maintainProportions, setMaintainProportions] = useState(true);
+  const [showAnimation, setShowAnimation] = useState(true);
+  const [workAreaWidthInput, setWorkAreaWidthInput] = useState(String(Math.round(workArea.width)));
+  const [workAreaHeightInput, setWorkAreaHeightInput] = useState(String(Math.round(workArea.height)));
+
+  useEffect(() => {
+    setShowAnimation(false);
+  }, []);
+
+  useEffect(() => {
+    setWorkAreaWidthInput(String(Math.round(workArea.width)));
+    setWorkAreaHeightInput(String(Math.round(workArea.height)));
+  }, [workArea.width, workArea.height]);
   
   if (selectedIds.length === 0) {
     return (
@@ -88,7 +105,14 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, se
           </p>
       </div>
       <div className="flex-1">
-        <WorkAreaSection />
+        <WorkAreaSection 
+          workArea={workArea}
+          onWorkAreaChange={onWorkAreaChange}
+          workAreaWidthInput={workAreaWidthInput}
+          setWorkAreaWidthInput={setWorkAreaWidthInput}
+          workAreaHeightInput={workAreaHeightInput}
+          setWorkAreaHeightInput={setWorkAreaHeightInput}
+        />
         <div className="text-center mt-3 px-4">
           <p className="text-sm text-drawhard-hover">Aucun élément sélectionné</p>
         </div>
@@ -261,7 +285,14 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, se
         </p>
       </div>
       <div className="flex-1">
-        <WorkAreaSection />
+        <WorkAreaSection 
+          workArea={workArea}
+          onWorkAreaChange={onWorkAreaChange}
+          workAreaWidthInput={workAreaWidthInput}
+          setWorkAreaWidthInput={setWorkAreaWidthInput}
+          workAreaHeightInput={workAreaHeightInput}
+          setWorkAreaHeightInput={setWorkAreaHeightInput}
+        />
         
         {selectedIds.length > 0 && (
           <div className="border-t-2 border-drawhard-dark pt-3 px-4 pb-2">

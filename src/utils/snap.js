@@ -125,7 +125,8 @@ export const findGuideSnapPosition = (guideType, currentPos, elements, viewport)
           }
         }
       }
-    } else if (el.type === 'rectangle') {
+    } else if (el.type === 'rectangle' || el.type === 'text') {
+      // Les textes se comportent comme des rectangles pour le snap
       if (guideType === 'horizontal') {
         positions.push(el.y, el.y + el.height, el.y + el.height / 2);
       } else {
@@ -214,7 +215,8 @@ export const findSnapPoints = (point, elements, excludeIds, viewport) => {
           snapPoints.push({ x: closestPoint.x, y: closestPoint.y, type: 'edge', priority: 3, distance: minDist, elementId: el.id });
         }
       }
-    } else if (el.type === 'rectangle') {
+    } else if (el.type === 'rectangle' || el.type === 'text') {
+      // Les textes se comportent comme des rectangles pour le snap
       snapPoints.push(
         { x: el.x, y: el.y, type: 'endpoint', priority: 20, elementId: el.id },
         { x: el.x + el.width, y: el.y, type: 'endpoint', priority: 20, elementId: el.id },
@@ -336,7 +338,7 @@ export const findSnapPoints = (point, elements, excludeIds, viewport) => {
   return closest;
 };
 
-export const applyMultiPointSnap = (elements, selectedIds, dx, dy, snapToElements, showRulers, guides, viewport, snapToGrid = true, gridSize = 1) => {
+export const applyMultiPointSnap = (elements, selectedIds, dx, dy, snapToElements, showRulers, guides, viewport, snapToGrid = true, gridSize = 1, draggedControlPoint = null) => {
   const snapDist = SNAP_DISTANCE / viewport.zoom;
   let bestOffsetX = dx;
   let bestOffsetY = dy;
@@ -349,58 +351,65 @@ export const applyMultiPointSnap = (elements, selectedIds, dx, dy, snapToElement
 
   const selectedElements = elements.filter(el => selectedIds.includes(el.id));
   
-  for (const selectedEl of selectedElements) {
-    const snapPoints = getElementSnapPoints(selectedEl);
+  // Si on a un point de référence spécifique (celui saisi au clic), utiliser UNIQUEMENT ce point
+  // Sinon, utiliser tous les points de l'élément (ancien comportement)
+  const pointsToTest = draggedControlPoint ? [draggedControlPoint] : [];
+  
+  if (pointsToTest.length === 0 && selectedElements.length > 0) {
+    // Pas de point spécifique : utiliser tous les points du premier élément (ancien comportement)
+    pointsToTest.push(...getElementSnapPoints(selectedElements[0]));
+  }
+  
+  for (const point of pointsToTest) {
+    const movedPoint = { x: point.x + dx, y: point.y + dy };
     
-    for (const point of snapPoints) {
-      const movedPoint = { x: point.x + dx, y: point.y + dy };
-      
-      if (showRulers && guides.length > 0) {
-        for (const guide of guides) {
-          if (guide.type === 'horizontal' && !foundSnapY) {
-            if (Math.abs(movedPoint.y - guide.position) < snapDist) {
-              bestOffsetY = guide.position - point.y;
-              foundSnapY = true;
-              snapInfoY = { type: 'guide', priority: 100 };
-              snapPointY = guide.position;
-            }
-          } else if (guide.type === 'vertical' && !foundSnapX) {
-            if (Math.abs(movedPoint.x - guide.position) < snapDist) {
-              bestOffsetX = guide.position - point.x;
-              foundSnapX = true;
-              snapInfoX = { type: 'guide', priority: 100 };
-              snapPointX = guide.position;
-            }
-          }
-        }
-      }
-      
-      if (snapToElements && (!foundSnapX || !foundSnapY)) {
-        const snap = findSnapPoints(movedPoint, elements, selectedIds, viewport);
-        if (snap) {
-          if (!foundSnapX) {
-            bestOffsetX = snap.x - point.x;
-            foundSnapX = true;
-            snapInfoX = snap;
-            snapPointX = snap.x;
-          }
-          if (!foundSnapY) {
-            bestOffsetY = snap.y - point.y;
+    if (showRulers && guides.length > 0) {
+      for (const guide of guides) {
+        if (guide.type === 'horizontal' && !foundSnapY) {
+          if (Math.abs(movedPoint.y - guide.position) < snapDist) {
+            bestOffsetY = guide.position - point.y;
             foundSnapY = true;
-            snapInfoY = snap;
-            snapPointY = snap.y;
+            snapInfoY = { type: 'guide', priority: 100 };
+            snapPointY = guide.position;
+          }
+        } else if (guide.type === 'vertical' && !foundSnapX) {
+          if (Math.abs(movedPoint.x - guide.position) < snapDist) {
+            bestOffsetX = guide.position - point.x;
+            foundSnapX = true;
+            snapInfoX = { type: 'guide', priority: 100 };
+            snapPointX = guide.position;
           }
         }
       }
-      
-      if (foundSnapX && foundSnapY) break;
+    }
+    
+    if (snapToElements && (!foundSnapX || !foundSnapY)) {
+      const snap = findSnapPoints(movedPoint, elements, selectedIds, viewport);
+      if (snap) {
+        if (!foundSnapX) {
+          bestOffsetX = snap.x - point.x;
+          foundSnapX = true;
+          snapInfoX = snap;
+          snapPointX = snap.x;
+        }
+        if (!foundSnapY) {
+          bestOffsetY = snap.y - point.y;
+          foundSnapY = true;
+          snapInfoY = snap;
+          snapPointY = snap.y;
+        }
+      }
     }
     
     if (foundSnapX && foundSnapY) break;
   }
 
   let referencePoint = null;
-  if (selectedElements.length > 0) {
+  
+  // Utiliser le control point saisi comme référence, sinon utiliser le premier point
+  if (draggedControlPoint) {
+    referencePoint = draggedControlPoint;
+  } else if (selectedElements.length > 0) {
     const points = getElementSnapPoints(selectedElements[0]);
     if (points && points.length > 0) {
       referencePoint = points[0];

@@ -172,7 +172,7 @@ export const drawOriginCross = (ctx, canvas, viewport, worldX, worldY) => {
   ctx.stroke();
 };
 
-export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, isEditing, textCursorPosition, textSelectionStart, textSelectionEnd) => {
+export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, isEditing, textCursorPosition, textSelectionStart, textSelectionEnd, tool) => {
   ctx.save();
 
   const isFlashing = flashingIds.includes(el.id);
@@ -494,130 +494,210 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.restore();
     }
   } else if (el.type === 'text') {
-    const pos = worldToScreen(el.x, el.y, canvas, viewport);
+    const x = el.x;
+    const y = el.y;
+    const width = el.width;
+    const height = el.height;
     
-    ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
-    ctx.textBaseline = 'bottom';
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+    
+    const topLeft = worldToScreen(x, y, canvas, viewport);
+    const rectWidth = width * viewport.zoom;
+    const rectHeight = height * viewport.zoom;
+    
+    const scaledFontSize = el.fontSize * viewport.zoom;
+    ctx.font = `${el.fontStyle} ${el.fontWeight} ${scaledFontSize}px ${el.fontFamily}`;
     
     const lines = el.text.split('\n');
-    const lineHeight = el.fontSize * 1.2;
+    const lineHeight = scaledFontSize * 1.2;
     
-    // Rendu du texte avec sélection
-    if (isEditing) {
-      // Pendant l'édition, on rend toujours avec la logique de sélection,
-      // même si start === end (pour éviter que tout le texte devienne bleu)
-      const startPos = Math.min(textSelectionStart, textSelectionEnd);
-      const endPos = Math.max(textSelectionStart, textSelectionEnd);
-
-      // Si start === end, on traite ça comme une sélection de longueur 0
-      const hasSelection = startPos !== endPos;
-
+    const textAlign = el.textAlign || 'center';
+    const verticalAlign = el.verticalAlign || 'middle';
+    
+    const totalTextHeight = lines.length * lineHeight;
+    let startY;
+    if (verticalAlign === 'top') {
+      startY = topLeft.y + scaledFontSize * 0.85;
+    } else if (verticalAlign === 'bottom') {
+      startY = topLeft.y + rectHeight - totalTextHeight + scaledFontSize * 0.85;
+    } else {
+      startY = topLeft.y + (rectHeight - totalTextHeight) / 2 + scaledFontSize * 0.85;
+    }
+    
+    ctx.textBaseline = 'alphabetic';
+    
+    let textX;
+    if (textAlign === 'center') {
+      textX = topLeft.x + rectWidth / 2;
+    } else if (textAlign === 'right') {
+      textX = topLeft.x + rectWidth;
+    } else {
+      textX = topLeft.x;
+    }
+    
+    // Rendu du texte avec gestion de la sélection
+    if (isEditing && textSelectionStart !== undefined && textSelectionEnd !== undefined) {
+      const selStart = Math.min(textSelectionStart, textSelectionEnd);
+      const selEnd = Math.max(textSelectionStart, textSelectionEnd);
+      const hasSelection = selStart !== selEnd;
+      
       let currentPos = 0;
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const lineStart = currentPos;
         const lineEnd = currentPos + line.length;
-        const lineY = pos.y - (lines.length - 1 - i) * lineHeight;
-
-        // Si on a une vraie sélection (start !== end), diviser la ligne en parties
-        if (hasSelection) {
-          // Diviser la ligne en 3 parties : avant sélection, sélectionnée, après sélection
-          const selStart = Math.max(startPos, lineStart) - lineStart;
-          const selEnd = Math.min(endPos, lineEnd) - lineStart;
-
-          const textBeforeSel = line.slice(0, Math.max(0, selStart));
-          const selectedText = selStart < selEnd ? line.slice(selStart, selEnd) : '';
-          const textAfterSel = line.slice(Math.max(0, selEnd));
-
-          // Position X de chaque partie
-          let currentX = pos.x;
-          const beforeSelWidth = ctx.measureText(textBeforeSel).width;
-          const selectedWidth = ctx.measureText(selectedText).width;
-
-          // Texte avant la sélection (normal)
-          if (textBeforeSel) {
-            ctx.fillStyle = el.fill || '#1F1F1F';
-            ctx.fillText(textBeforeSel, currentX, lineY);
-            currentX += beforeSelWidth;
+        const lineY = startY + i * lineHeight;
+        
+        if (hasSelection && selEnd > lineStart && selStart < lineEnd) {
+          const selStartInLine = Math.max(0, selStart - lineStart);
+          const selEndInLine = Math.min(line.length, selEnd - lineStart);
+          
+          const textBefore = line.slice(0, selStartInLine);
+          const textSelected = line.slice(selStartInLine, selEndInLine);
+          const textAfter = line.slice(selEndInLine);
+          
+          ctx.save();
+          
+          if (textAlign === 'center') {
+            const fullLineWidth = ctx.measureText(line).width;
+            const beforeWidth = ctx.measureText(textBefore).width;
+            const selectedWidth = ctx.measureText(textSelected).width;
+            
+            const lineStartX = textX - fullLineWidth / 2;
+            
+            if (textBefore) {
+              ctx.fillStyle = el.fill || '#1F1F1F';
+              ctx.textAlign = 'left';
+              ctx.fillText(textBefore, lineStartX, lineY);
+            }
+            
+            if (textSelected) {
+              ctx.fillStyle = 'rgba(0, 170, 255, 0.3)';
+              ctx.fillRect(lineStartX + beforeWidth, lineY - scaledFontSize * 0.8, selectedWidth, scaledFontSize);
+              
+              ctx.fillStyle = '#ffffff';
+              ctx.textAlign = 'left';
+              ctx.fillText(textSelected, lineStartX + beforeWidth, lineY);
+            }
+            
+            if (textAfter) {
+              ctx.fillStyle = el.fill || '#1F1F1F';
+              ctx.textAlign = 'left';
+              ctx.fillText(textAfter, lineStartX + beforeWidth + selectedWidth, lineY);
+            }
+          } else {
+            const beforeWidth = ctx.measureText(textBefore).width;
+            const selectedWidth = ctx.measureText(textSelected).width;
+            
+            let currentX = textX;
+            
+            if (textBefore) {
+              ctx.fillStyle = el.fill || '#1F1F1F';
+              ctx.textAlign = 'left';
+              ctx.fillText(textBefore, currentX, lineY);
+              currentX += beforeWidth;
+            }
+            
+            if (textSelected) {
+              ctx.fillStyle = 'rgba(0, 170, 255, 0.3)';
+              ctx.fillRect(currentX, lineY - scaledFontSize * 0.8, selectedWidth, scaledFontSize);
+              
+              ctx.fillStyle = '#ffffff';
+              ctx.textAlign = 'left';
+              ctx.fillText(textSelected, currentX, lineY);
+              currentX += selectedWidth;
+            }
+            
+            if (textAfter) {
+              ctx.fillStyle = el.fill || '#1F1F1F';
+              ctx.textAlign = 'left';
+              ctx.fillText(textAfter, currentX, lineY);
+            }
           }
-
-          // Texte sélectionné (blanc sur fond bleu)
-          if (selectedText) {
-            const selY = lineY - el.fontSize;
-
-            // Rectangle de sélection
-            ctx.fillStyle = 'rgba(0, 170, 255, 0.3)';
-            ctx.fillRect(currentX, selY, selectedWidth, el.fontSize);
-
-            // Texte sélectionné en blanc
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(selectedText, currentX, lineY);
-            currentX += selectedWidth;
-          }
-
-          // Texte après la sélection (normal)
-          if (textAfterSel) {
-            ctx.fillStyle = el.fill || '#1F1F1F';
-            ctx.fillText(textAfterSel, currentX, lineY);
-          }
+          
+          ctx.restore();
         } else {
-          // Pas de sélection : rendre tout le texte normalement (pas en bleu)
-          ctx.fillStyle = el.fill || (darkMode ? '#ffffff' : '#000000');
-          ctx.fillText(line, pos.x, lineY);
+          ctx.save();
+          if (textAlign === 'center') {
+            ctx.textAlign = 'center';
+          } else if (textAlign === 'right') {
+            ctx.textAlign = 'right';
+          } else {
+            ctx.textAlign = 'left';
+          }
+          ctx.fillStyle = el.fill || '#1F1F1F';
+          ctx.fillText(line, textX, lineY);
+          ctx.restore();
         }
-
+        
         currentPos += line.length + 1;
       }
     } else {
-      // Rendu normal du texte
+      ctx.save();
+      if (textAlign === 'center') {
+        ctx.textAlign = 'center';
+      } else if (textAlign === 'right') {
+        ctx.textAlign = 'right';
+      } else {
+        ctx.textAlign = 'left';
+      }
       ctx.fillStyle = isFlashing ? flashColor : (isSelected || isEditing ? '#E44A33' : (el.fill || '#1F1F1F'));
       lines.forEach((line, index) => {
-        ctx.fillText(line, pos.x, pos.y - (lines.length - 1 - index) * lineHeight);
+        const lineY = startY + index * lineHeight;
+        ctx.fillText(line, textX, lineY);
       });
+      ctx.restore();
     }
 
     // Le curseur sera rendu après le rectangle de sélection
     
     // AFFICHAGE DES POIGNÉES DE REDIMENSIONNEMENT POUR LES TEXTES
-    // Un rectangle en pointillés et 8 poignées bleues apparaissent quand le texte est sélectionné ou en édition
+    // Un rectangle en pointillés et 8 poignées apparaissent quand le texte est sélectionné ou en édition
     if (isSelected || isEditing) {
-      const textWidth = Math.max(...lines.map(line => ctx.measureText(line).width));
-      const textHeight = lines.length * lineHeight;
-
-      // Rectangle de sélection en pointillés
+      // Rectangle de sélection en pointillés (toujours affiché)
       ctx.strokeStyle = '#E44A33';
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 4]);
-      ctx.strokeRect(pos.x, pos.y - textHeight, textWidth, textHeight);
+      ctx.strokeRect(topLeft.x, topLeft.y, rectWidth, rectHeight);
       ctx.setLineDash([]);
 
       // 8 poignées de redimensionnement aux coins et milieux des côtés
-      const corners = [
-        { x: pos.x, y: pos.y - textHeight },                    // topLeft
-        { x: pos.x + textWidth, y: pos.y - textHeight },       // topRight
-        { x: pos.x, y: pos.y },                                // bottomLeft
-        { x: pos.x + textWidth, y: pos.y },                    // bottomRight
-        { x: pos.x + textWidth / 2, y: pos.y - textHeight },   // top
-        { x: pos.x + textWidth, y: pos.y - textHeight / 2 },   // right
-        { x: pos.x + textWidth / 2, y: pos.y },                // bottom
-        { x: pos.x, y: pos.y - textHeight / 2 }                // left
-      ];
+      // Masquer les poignées quand l'outil Texte est actif
+      if (tool !== 'text') {
+        const corners = [
+          { x: topLeft.x, y: topLeft.y },                              // topLeft
+          { x: topLeft.x + rectWidth, y: topLeft.y },                  // topRight
+          { x: topLeft.x, y: topLeft.y + rectHeight },                 // bottomLeft
+          { x: topLeft.x + rectWidth, y: topLeft.y + rectHeight },     // bottomRight
+          { x: topLeft.x + rectWidth / 2, y: topLeft.y },              // top
+          { x: topLeft.x + rectWidth, y: topLeft.y + rectHeight / 2 }, // right
+          { x: topLeft.x + rectWidth / 2, y: topLeft.y + rectHeight }, // bottom
+          { x: topLeft.x, y: topLeft.y + rectHeight / 2 }              // left
+        ];
 
-      ctx.save();
-      corners.forEach((pt, idx) => {
-        ctx.fillStyle = '#2B2B2B';
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      });
-      ctx.restore();
+        ctx.save();
+        corners.forEach((pt, idx) => {
+          ctx.fillStyle = '#2B2B2B';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        });
+        ctx.restore();
+      }
     }
     
     // Rendu du curseur APRÈS le rectangle de sélection pour qu'il soit visible
-    if (isEditing && textCursorPosition !== undefined) {
+    // Ne pas afficher le curseur s'il y a une sélection active
+    const hasActiveSelection = textSelectionStart !== undefined && 
+                               textSelectionEnd !== undefined && 
+                               textSelectionStart !== textSelectionEnd;
+    
+    if (isEditing && textCursorPosition !== undefined && !hasActiveSelection) {
       let currentPos = 0;
       let cursorLine = -1, cursorCol = -1;
 
@@ -645,8 +725,20 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       if (cursorLine >= 0) {
         const cursorLineText = lines[cursorLine];
         const textBeforeCursor = cursorLineText.slice(0, cursorCol);
-        const cursorX = pos.x + ctx.measureText(textBeforeCursor).width;
-        const cursorY = pos.y - (lines.length - 1 - cursorLine) * lineHeight;
+        const textBeforeWidth = ctx.measureText(textBeforeCursor).width;
+        
+        let cursorX;
+        if (textAlign === 'center') {
+          const lineWidth = ctx.measureText(cursorLineText).width;
+          cursorX = textX - lineWidth / 2 + textBeforeWidth;
+        } else if (textAlign === 'right') {
+          const lineWidth = ctx.measureText(cursorLineText).width;
+          cursorX = textX - lineWidth + textBeforeWidth;
+        } else {
+          cursorX = textX + textBeforeWidth;
+        }
+        
+        const cursorY = startY + cursorLine * lineHeight;
 
         // Clignotement plus fluide avec une fréquence fixe
         const blinkSpeed = 500; // ms
@@ -656,8 +748,8 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
           ctx.strokeStyle = '#E44A33';
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(cursorX, cursorY - el.fontSize);
-          ctx.lineTo(cursorX, cursorY + 2); // Petit padding en bas
+          ctx.moveTo(cursorX, cursorY - scaledFontSize * 0.8);
+          ctx.lineTo(cursorX, cursorY + 2);
           ctx.stroke();
         }
       }

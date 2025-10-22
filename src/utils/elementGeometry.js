@@ -3,8 +3,6 @@
  * Centralise tous les calculs de points de contrôle, bounds, etc.
  */
 
-import { getTextDimensions } from './textMeasurement.js';
-
 /**
  * Obtient les points de contrôle d'un élément
  * @param {Object} element - L'élément dont on veut les points
@@ -16,28 +14,19 @@ export const getElementControlPoints = (element, viewport, mode = 'select') => {
   const controlPoints = [];
   
   switch (element.type) {
-    case 'text': {
-      const { width, height } = getTextDimensions(element, viewport);
-      
-      // Coins (toujours)
+    case 'text':
       controlPoints.push(
-        { x: element.x, y: element.y - height, label: 'topLeft' },
-        { x: element.x + width, y: element.y - height, label: 'topRight' },
-        { x: element.x, y: element.y, label: 'bottomLeft' },
-        { x: element.x + width, y: element.y, label: 'bottomRight' }
+        { x: element.x, y: element.y, label: 'topLeft' },
+        { x: element.x + element.width, y: element.y, label: 'topRight' },
+        { x: element.x, y: element.y + element.height, label: 'bottomLeft' },
+        { x: element.x + element.width, y: element.y + element.height, label: 'bottomRight' },
+        { x: element.x + element.width / 2, y: element.y + element.height / 2, label: 'center' },
+        { x: element.x + element.width / 2, y: element.y, label: 'top' },
+        { x: element.x + element.width, y: element.y + element.height / 2, label: 'right' },
+        { x: element.x + element.width / 2, y: element.y + element.height, label: 'bottom' },
+        { x: element.x, y: element.y + element.height / 2, label: 'left' }
       );
-      
-      // Points médians (seulement en mode select)
-      if (mode !== 'edit') {
-        controlPoints.push(
-          { x: element.x + width / 2, y: element.y - height, label: 'top' },
-          { x: element.x + width, y: element.y - height / 2, label: 'right' },
-          { x: element.x + width / 2, y: element.y, label: 'bottom' },
-          { x: element.x, y: element.y - height / 2, label: 'left' }
-        );
-      }
       break;
-    }
     
     case 'line':
       controlPoints.push(
@@ -61,6 +50,7 @@ export const getElementControlPoints = (element, viewport, mode = 'select') => {
         { x: element.x + element.width, y: element.y, label: 'topRight' },
         { x: element.x, y: element.y + element.height, label: 'bottomLeft' },
         { x: element.x + element.width, y: element.y + element.height, label: 'bottomRight' },
+        { x: element.x + element.width / 2, y: element.y + element.height / 2, label: 'center' },
         { x: element.x + element.width / 2, y: element.y, label: 'top' },
         { x: element.x + element.width, y: element.y + element.height / 2, label: 'right' },
         { x: element.x + element.width / 2, y: element.y + element.height, label: 'bottom' },
@@ -89,6 +79,21 @@ export const getElementControlPoints = (element, viewport, mode = 'select') => {
       );
       break;
     }
+    
+    case 'text':
+      // Les textes se comportent comme des rectangles
+      controlPoints.push(
+        { x: element.x, y: element.y, label: 'topLeft' },
+        { x: element.x + element.width, y: element.y, label: 'topRight' },
+        { x: element.x, y: element.y + element.height, label: 'bottomLeft' },
+        { x: element.x + element.width, y: element.y + element.height, label: 'bottomRight' },
+        { x: element.x + element.width / 2, y: element.y + element.height / 2, label: 'center' },
+        { x: element.x + element.width / 2, y: element.y, label: 'top' },
+        { x: element.x + element.width, y: element.y + element.height / 2, label: 'right' },
+        { x: element.x + element.width / 2, y: element.y + element.height, label: 'bottom' },
+        { x: element.x, y: element.y + element.height / 2, label: 'left' }
+      );
+      break;
   }
   
   return controlPoints;
@@ -101,13 +106,11 @@ export const getElementControlPoints = (element, viewport, mode = 'select') => {
  * @returns {Array} Liste d'arêtes { x1, y1, x2, y2, label }
  */
 export const getTextEdges = (element, viewport) => {
-  const { width, height } = getTextDimensions(element, viewport);
-  
   return [
-    { x1: element.x, y1: element.y - height, x2: element.x + width, y2: element.y - height, label: 'top' },
-    { x1: element.x + width, y1: element.y - height, x2: element.x + width, y2: element.y, label: 'right' },
-    { x1: element.x + width, y1: element.y, x2: element.x, y2: element.y, label: 'bottom' },
-    { x1: element.x, y1: element.y, x2: element.x, y2: element.y - height, label: 'left' }
+    { x1: element.x, y1: element.y, x2: element.x + element.width, y2: element.y, label: 'top' },
+    { x1: element.x + element.width, y1: element.y, x2: element.x + element.width, y2: element.y + element.height, label: 'right' },
+    { x1: element.x + element.width, y1: element.y + element.height, x2: element.x, y2: element.y + element.height, label: 'bottom' },
+    { x1: element.x, y1: element.y + element.height, x2: element.x, y2: element.y, label: 'left' }
   ];
 };
 
@@ -238,15 +241,13 @@ export const isPointInElement = (point, element, viewport, tolerance = 10, point
       return Math.abs(dist - 1) < toleranceWorld / rx;
     }
     
-    case 'text': {
-      const { width, height } = getTextDimensions(element, viewport);
-      const margin = 25 / viewport.zoom;
-      return point.x >= element.x - margin && point.x <= element.x + width + margin &&
-             point.y >= element.y - height - margin && point.y <= element.y + margin;
-    }
+    case 'text':
+      return point.x >= element.x && point.x <= element.x + element.width &&
+             point.y >= element.y && point.y <= element.y + element.height;
     
     default:
       return false;
   }
 };
+
 

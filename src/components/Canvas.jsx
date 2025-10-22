@@ -9,6 +9,7 @@ import {
   drawSelectionBox,
   drawWorkArea
 } from '../utils/drawing';
+import { worldToScreen } from '../utils/transforms';
 import { RULER_SIZE } from '../constants';
 
 const Canvas = React.memo(({
@@ -59,16 +60,54 @@ const Canvas = React.memo(({
     
     // Définir la largeur des bordures noires
     const borderWidth = 10;
+
+    if (showRulers) {
+      ctx.save();
+      drawGuides(ctx, canvas, viewport, guides, showRulers, borderWidth);
+      ctx.restore();
+    }
+
+    elements.forEach(el => {
+      const isSelected = selectedIds.includes(el.id);
+      const isEditing = editingTextId === el.id && (tool === 'edit' || tool === 'text');
+      drawElement(ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, isEditing, textCursorPosition, textSelectionStart, textSelectionEnd, tool);
+    });
+
+    if (currentElement) {
+      if (currentElement.type === 'text') {
+        const x = currentElement.width < 0 ? currentElement.x + currentElement.width : currentElement.x;
+        const y = currentElement.height < 0 ? currentElement.y + currentElement.height : currentElement.y;
+        const width = Math.abs(currentElement.width);
+        const height = Math.abs(currentElement.height);
+        
+        const topLeft = worldToScreen(x, y, canvas, viewport);
+        const rectWidth = width * viewport.zoom;
+        const rectHeight = height * viewport.zoom;
+        
+        ctx.strokeStyle = '#E44A33';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(topLeft.x, topLeft.y, rectWidth, rectHeight);
+        ctx.setLineDash([]);
+      } else {
+        drawElement(ctx, canvas, viewport, currentElement, false, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, false, undefined, undefined, undefined, tool);
+      }
+    }
+
+    if (drawOrigin) {
+      drawOriginCross(ctx, canvas, viewport, drawOrigin.x, drawOrigin.y);
+    }
+
+    drawSelectionBox(ctx, selectionBox);
     
-    // Dessiner les règles (au-dessus de la zone de travail, en dessous du rectangle noir)
+    // Dessiner les règles au-dessus des éléments
     if (showRulers) {
       ctx.save();
       drawRulers(ctx, canvas, viewport, darkMode, showRulers, borderWidth);
       ctx.restore();
     }
     
-    // Dessiner les grosses bordures noires avec fillRect pour une épaisseur fixe (sans le bas)
-    // Les bordures commencent à 0 pour couvrir partiellement les règles
+    // Dessiner les bordures noires au-dessus des règles
     const rulerOffset = showRulers ? RULER_SIZE : 0;
     const x = 0;
     const y = 0;
@@ -86,44 +125,23 @@ const Canvas = React.memo(({
     // Barre verticale droite (jusqu'en bas de l'écran)
     ctx.fillRect(w - borderWidth, y, borderWidth, h);
     
-    // Ajouter les lignes blanches en biseau aux coins du haut (couvrant toute l'épaisseur de la barre)
+    // Ajouter les lignes blanches en biseau aux coins du haut
     const bevelLength = 10;
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 1.5;
     
-    // Coin haut-gauche (ligne diagonale partant exactement du coin extérieur)
+    // Coin haut-gauche
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(bevelLength, bevelLength);
     ctx.stroke();
     
-    // Coin haut-droite (ligne diagonale partant exactement du coin extérieur)
+    // Coin haut-droite
     ctx.beginPath();
     ctx.moveTo(w, 0);
     ctx.lineTo(w - bevelLength, bevelLength);
     ctx.stroke();
-
-    if (showRulers) {
-      ctx.save();
-      drawGuides(ctx, canvas, viewport, guides, showRulers, borderWidth);
-      ctx.restore();
-    }
-
-    elements.forEach(el => {
-      const isSelected = selectedIds.includes(el.id);
-      const isEditing = editingTextId === el.id && tool === 'edit';
-      drawElement(ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, isEditing, textCursorPosition, textSelectionStart, textSelectionEnd);
-    });
-
-    if (currentElement) {
-      drawElement(ctx, canvas, viewport, currentElement, false, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, false);
-    }
-
-    if (drawOrigin) {
-      drawOriginCross(ctx, canvas, viewport, drawOrigin.x, drawOrigin.y);
-    }
-
-    drawSelectionBox(ctx, selectionBox);
+    
     drawSnapPoint(ctx, canvas, viewport, snapPoint, selectedIds);
 
     ctx.restore();
