@@ -39,8 +39,9 @@ export const useElements = () => {
 
   const undo = () => {
     if (historyIndex > 0) {
-      setHistoryIndex(prev => prev - 1);
-      setElements(history[historyIndex - 1]);
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setElements(history[newIndex]);
       return true;
     }
     return false;
@@ -48,8 +49,9 @@ export const useElements = () => {
 
   const redo = () => {
     if (historyIndex < history.length - 1) {
-      setHistoryIndex(prev => prev + 1);
-      setElements(history[historyIndex + 1]);
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setElements(history[newIndex]);
       return true;
     }
     return false;

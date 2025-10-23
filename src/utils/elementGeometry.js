@@ -201,10 +201,11 @@ export const getCursorForControlPoint = (label, mode) => {
     case 'right':
       return 'ew-resize';
     case 'middle':
+    case 'control':
+      return 'grab';
     case 'start':
     case 'end':
-    case 'control':
-      return 'move';
+      return 'pointer';
     default:
       return 'pointer';
   }

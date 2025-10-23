@@ -64,7 +64,7 @@ const WorkAreaSection = ({ workArea, onWorkAreaChange, workAreaWidthInput, setWo
     </div>
 );
 
-const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, setElements, workArea, onWorkAreaChange, onRotate, onFlipHorizontal, onFlipVertical }) => {
+const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, onResizeElement, setElements, workArea, onWorkAreaChange, onRotate, onFlipHorizontal, onFlipVertical }) => {
   const [maintainProportions, setMaintainProportions] = useState(true);
   const [showAnimation, setShowAnimation] = useState(true);
   const [workAreaWidthInput, setWorkAreaWidthInput] = useState(String(Math.round(workArea.width)));
@@ -487,17 +487,8 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, se
                     );
                     if (currentLength === 0) return;
                     
-                    // Calculer l'angle actuel de la ligne
-                    const angle = Math.atan2(
-                      selectedElement.y2 - selectedElement.y1,
-                      selectedElement.x2 - selectedElement.x1
-                    );
-                    
-                    // Nouveau point final basé sur la nouvelle longueur
-                    const newX2 = selectedElement.x1 + newLength * Math.cos(angle);
-                    const newY2 = selectedElement.y1 + newLength * Math.sin(angle);
-                    
-                    onUpdateElement(selectedElement.id, { x2: newX2, y2: newY2 });
+                    const delta = newLength - currentLength;
+                    onResizeElement(delta, false);
                   }}
                   className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-dark"
                   min="1"

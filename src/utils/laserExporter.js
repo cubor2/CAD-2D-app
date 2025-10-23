@@ -36,6 +36,7 @@ const exportSVGForLaser = (elements, machine, workArea, fileName) => {
   const height = workArea.height;
   const offsetX = width / 2;
   const offsetY = height / 2;
+  
   const strokeColor = `rgb(${machine.cutStrokeColor.r}, ${machine.cutStrokeColor.g}, ${machine.cutStrokeColor.b})`;
   const strokeWidth = machine.cutStrokeWidth;
 
@@ -56,6 +57,9 @@ const exportSVGForLaser = (elements, machine, workArea, fileName) => {
   if (machine.tip) {
     svgContent += `  <!-- ${machine.tip.replace('💡 ', 'TIP: ')} -->\n\n`;
   }
+
+  svgContent += `  <!-- Rectangle de référence de la zone de travail (ne sera pas découpé) -->\n`;
+  svgContent += `  <rect x="0" y="0" width="${width}" height="${height}" stroke="#0000ff" stroke-width="0.01" fill="none" opacity="0.3" id="work-area-reference" />\n\n`;
 
   svgContent += `  <g id="cut-layer" stroke="${strokeColor}" stroke-width="${strokeWidth}" fill="none">\n`;
 
@@ -81,8 +85,15 @@ const exportSVGForLaser = (elements, machine, workArea, fileName) => {
       const startY = el.cy + ry * Math.sin(el.startAngle);
       const endX = el.cx + rx * Math.cos(el.endAngle);
       const endY = el.cy + ry * Math.sin(el.endAngle);
-      const largeArc = (el.endAngle - el.startAngle) > Math.PI ? 1 : 0;
-      svgContent += `    <path d="M ${startX + offsetX} ${startY + offsetY} A ${rx} ${ry} 0 ${largeArc} 1 ${endX + offsetX} ${endY + offsetY}" />\n`;
+      
+      let angleDiff = el.endAngle - el.startAngle;
+      while (angleDiff < 0) angleDiff += 2 * Math.PI;
+      while (angleDiff > 2 * Math.PI) angleDiff -= 2 * Math.PI;
+      
+      const largeArc = angleDiff > Math.PI ? 1 : 0;
+      const sweepFlag = 1;
+      
+      svgContent += `    <path d="M ${startX + offsetX} ${startY + offsetY} A ${rx} ${ry} 0 ${largeArc} ${sweepFlag} ${endX + offsetX} ${endY + offsetY}" />\n`;
     } else if (el.type === 'curve') {
       if (typeof el.cpx !== 'undefined' && typeof el.cpy !== 'undefined') {
         svgContent += `    <path d="M ${el.x1 + offsetX} ${el.y1 + offsetY} Q ${el.cpx + offsetX} ${el.cpy + offsetY} ${el.x2 + offsetX} ${el.y2 + offsetY}" />\n`;
@@ -141,15 +152,17 @@ const exportPDFForLaser = (elements, machine, workArea, fileName) => {
   
   doc.setLineWidth(machine.cutStrokeWidth);
 
-  elements.forEach((el) => {
+  elements.forEach((el, index) => {
     if (el.type === 'line') {
-      doc.line(
-        el.x1 + offsetX,
-        el.y1 + offsetY,
-        el.x2 + offsetX,
-        el.y2 + offsetY
-      );
+      const coords = [el.x1 + offsetX, el.y1 + offsetY, el.x2 + offsetX, el.y2 + offsetY];
+      if (coords.some(c => isNaN(c) || c === undefined || c === null)) {
+        return;
+      }
+      doc.line(...coords);
     } else if (el.type === 'rectangle') {
+      if (el.x === undefined || el.y === undefined || el.width === undefined || el.height === undefined) {
+        return;
+      }
       doc.rect(
         el.x + offsetX,
         el.y + offsetY,
@@ -160,6 +173,9 @@ const exportPDFForLaser = (elements, machine, workArea, fileName) => {
     } else if (el.type === 'circle') {
       const rx = el.radiusX || el.radius;
       const ry = el.radiusY || el.radius;
+      if (!rx || !ry || el.cx === undefined || el.cy === undefined) {
+        return;
+      }
       if (rx === ry) {
         doc.circle(el.cx + offsetX, el.cy + offsetY, rx, 'S');
       } else {
@@ -168,21 +184,46 @@ const exportPDFForLaser = (elements, machine, workArea, fileName) => {
     } else if (el.type === 'arc') {
       const rx = el.radiusX || el.radius;
       const ry = el.radiusY || el.radius;
-      const startX = el.cx + rx * Math.cos(el.startAngle);
-      const startY = el.cy + ry * Math.sin(el.startAngle);
-      const endX = el.cx + rx * Math.cos(el.endAngle);
-      const endY = el.cy + ry * Math.sin(el.endAngle);
       
-      doc.line(
-        startX + offsetX,
-        startY + offsetY,
-        endX + offsetX,
-        endY + offsetY
-      );
+      if (!rx || !ry || el.cx === undefined || el.cy === undefined || el.startAngle === undefined || el.endAngle === undefined) {
+        return;
+      }
+      
+      let angleDiff = el.endAngle - el.startAngle;
+      while (angleDiff < 0) angleDiff += 2 * Math.PI;
+      while (angleDiff > 2 * Math.PI) angleDiff -= 2 * Math.PI;
+      
+      const segments = Math.max(12, Math.ceil(angleDiff / (Math.PI / 12)));
+      const angleStep = angleDiff / segments;
+      
+      for (let i = 0; i < segments; i++) {
+        const angle1 = el.startAngle + i * angleStep;
+        const angle2 = el.startAngle + (i + 1) * angleStep;
+        
+        const x1 = el.cx + rx * Math.cos(angle1);
+        const y1 = el.cy + ry * Math.sin(angle1);
+        const x2 = el.cx + rx * Math.cos(angle2);
+        const y2 = el.cy + ry * Math.sin(angle2);
+        
+        doc.line(
+          x1 + offsetX,
+          y1 + offsetY,
+          x2 + offsetX,
+          y2 + offsetY
+        );
+      }
     } else if (el.type === 'curve') {
+      if (el.x1 === undefined || el.y1 === undefined || el.x2 === undefined || el.y2 === undefined) {
+        return;
+      }
+      
       if (typeof el.cpx !== 'undefined' && typeof el.cpy !== 'undefined') {
+        const curveLength = Math.sqrt(Math.pow(el.x2 - el.x1, 2) + Math.pow(el.y2 - el.y1, 2));
+        const segments = Math.max(50, Math.ceil(curveLength / 2));
+        const step = 1 / segments;
+        
         const points = [];
-        for (let t = 0; t <= 1; t += 0.05) {
+        for (let t = 0; t <= 1; t += step) {
           const t2 = t * t;
           const mt = 1 - t;
           const mt2 = mt * mt;
@@ -190,6 +231,11 @@ const exportPDFForLaser = (elements, machine, workArea, fileName) => {
           const y = mt2 * el.y1 + 2 * mt * t * el.cpy + t2 * el.y2;
           points.push({ x: x + offsetX, y: y + offsetY });
         }
+        
+        if (points.length > 0 && points[points.length - 1].x !== el.x2 + offsetX) {
+          points.push({ x: el.x2 + offsetX, y: el.y2 + offsetY });
+        }
+        
         for (let i = 0; i < points.length - 1; i++) {
           doc.line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
         }

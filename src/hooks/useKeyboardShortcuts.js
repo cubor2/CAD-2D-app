@@ -11,6 +11,7 @@ export const useKeyboardShortcuts = ({
   onGroup,
   onUngroup,
   onMoveElements,
+  onResizeElement,
   onNew,
   onOpen,
   onSave,
@@ -97,6 +98,20 @@ export const useKeyboardShortcuts = ({
         if (e.key === 'ArrowDown') dy = distance;
         
         onMoveElements(dx, dy);
+        return;
+      }
+      
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        if (selectedIds.length === 0) return;
+        onResizeElement(1, e.shiftKey);
+        return;
+      }
+      
+      if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        if (selectedIds.length === 0) return;
+        onResizeElement(-1, e.shiftKey);
         return;
       }
       
@@ -201,7 +216,7 @@ export const useKeyboardShortcuts = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedIds, tool, selectedEdge, editingTextId, onToolChange, onUndo, onRedo, onCopy, onCut, onPaste, onDelete, onGroup, onUngroup, onMoveElements, onNew, onOpen, onSave, onSaveAs]);
+  }, [selectedIds, tool, selectedEdge, editingTextId, onToolChange, onUndo, onRedo, onCopy, onCut, onPaste, onDelete, onGroup, onUngroup, onMoveElements, onResizeElement, onNew, onOpen, onSave, onSaveAs]);
 
   return { spacePressed };
 };

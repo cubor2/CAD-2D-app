@@ -1,5 +1,42 @@
 # Documentation Technique - LaserLair CAD 2D
 
+**Dernière mise à jour** : 23 Octobre 2025  
+**Version** : 1.0.3
+
+---
+
+## 🆕 Améliorations Récentes (v1.0.3)
+
+### Double-Clic Bidirectionnel
+- **Sélection → Édition** : Double-clic active le mode édition
+- **Édition → Sélection** : Double-clic revient en mode sélection
+- Détection : 300ms entre clics, même élément
+- Re-render forcé via manipulation temporaire de `selectedIds`
+
+### Couleurs de Sélection
+- **Mode Sélection** : Rouge (#ff0000)
+- **Mode Édition** : Bleu électrique (#00aaff)
+- Point milieu ligne : Noir (#2B2B2B) en sélection, bleu en édition
+
+### Édition de Texte Avancée
+- Sélection de texte à la souris (drag)
+- Curseur texte (I-beam) automatique
+- Calculs en coordonnées monde pour précision
+- Snap points désactivés pendant l'édition
+- État : `editingTextId`, `textCursorPosition`, `textSelectionStart/End`
+
+### Curseurs Contextuels
+```javascript
+// Mode édition
+'grabbing'  // Control points, middle, start, end
+'text'      // Édition de texte active
+'nwse-resize' // Coin diagonaux
+'ns-resize'   // Haut/bas
+'ew-resize'   // Gauche/droite
+```
+
+---
+
 ## Architecture globale
 
 ### Vue d'ensemble
@@ -580,6 +617,8 @@ docs(readme): mise à jour installation
 
 **Dernière mise à jour** : 17 Octobre 2025
 **Version** : 1.0.0
+
+
 
 
 

@@ -142,6 +142,7 @@ export const drawGuides = (ctx, canvas, viewport, guides, showRulers, borderWidt
   guides.forEach(guide => {
     ctx.strokeStyle = '#E44A33';
     ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
     
     if (guide.type === 'horizontal') {
       const screenY = worldToScreen(0, guide.position, canvas, viewport).y;
@@ -157,6 +158,7 @@ export const drawGuides = (ctx, canvas, viewport, guides, showRulers, borderWidt
       ctx.stroke();
     }
   });
+  ctx.setLineDash([]);
 };
 
 export const drawOriginCross = (ctx, canvas, viewport, worldX, worldY) => {
@@ -177,12 +179,13 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
 
   const isFlashing = flashingIds.includes(el.id);
   const flashColor = flashType === 'ungroup' ? '#ff8800' : '#00ff00';
+  const selectionColor = tool === 'edit' ? '#0EA5E9' : '#E44A33';
   
   if (isFlashing) {
     ctx.strokeStyle = flashColor;
     ctx.lineWidth = 4;
   } else if (isSelected) {
-    ctx.strokeStyle = '#E44A33';
+    ctx.strokeStyle = selectionColor;
     ctx.lineWidth = 2.5;
   } else {
     ctx.strokeStyle = el.stroke || '#2B2B2B';
@@ -203,7 +206,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.strokeStyle = flashColor;
       ctx.lineWidth = 4;
     } else {
-      ctx.strokeStyle = isArcSelected ? '#FF8C00' : (isSelected ? '#E44A33' : (el.stroke || '#2B2B2B'));
+      ctx.strokeStyle = isArcSelected ? '#FF8C00' : (isSelected ? selectionColor : (el.stroke || '#2B2B2B'));
       ctx.lineWidth = isArcSelected ? 4 : (isSelected ? 2.5 : (el.strokeWidth || 1.5));
     }
     
@@ -237,7 +240,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       
       ctx.save();
       controlPoints.forEach((pt, idx) => {
-        ctx.fillStyle = idx === 2 ? '#E44A33' : '#2B2B2B';
+        ctx.fillStyle = idx === 2 ? selectionColor : '#2B2B2B';
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
         ctx.fill();
@@ -257,7 +260,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.strokeStyle = flashColor;
       ctx.lineWidth = 4;
     } else {
-      ctx.strokeStyle = isLineSelected ? '#FF8C00' : (isSelected ? '#E44A33' : (el.stroke || '#2B2B2B'));
+      ctx.strokeStyle = isLineSelected ? '#FF8C00' : (isSelected ? selectionColor : (el.stroke || '#2B2B2B'));
       ctx.lineWidth = isLineSelected ? 4 : (isSelected ? 2.5 : (el.strokeWidth || 1.5));
     }
     
@@ -284,7 +287,11 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       
       ctx.save();
       controlPoints.forEach((pt, idx) => {
-        ctx.fillStyle = idx === 1 ? '#00aaff' : '#2B2B2B';
+        if (idx === 1) {
+          ctx.fillStyle = tool === 'edit' ? '#00aaff' : '#2B2B2B';
+        } else {
+          ctx.fillStyle = '#2B2B2B';
+        }
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
         ctx.fill();
@@ -303,7 +310,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.strokeStyle = flashColor;
       ctx.lineWidth = 4;
     } else {
-      ctx.strokeStyle = isSelected ? '#E44A33' : (el.stroke || '#2B2B2B');
+      ctx.strokeStyle = isSelected ? selectionColor : (el.stroke || '#2B2B2B');
       ctx.lineWidth = isSelected ? 2.5 : (el.strokeWidth || 1.5);
     }
     
@@ -373,7 +380,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         ctx.strokeStyle = '#00ff00';
         ctx.lineWidth = 4;
       } else {
-      ctx.strokeStyle = isEdgeSelected ? '#FF8C00' : (isSelected ? '#E44A33' : (el.stroke || '#2B2B2B'));
+      ctx.strokeStyle = isEdgeSelected ? '#FF8C00' : (isSelected ? selectionColor : (el.stroke || '#2B2B2B'));
       ctx.lineWidth = isEdgeSelected ? 4 : (isSelected ? 2.5 : (el.strokeWidth || 1.5));
       }
       
@@ -412,7 +419,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       
       ctx.save();
       controlPoints.forEach((pt, idx) => {
-        ctx.fillStyle = idx === 4 ? '#E44A33' : '#2B2B2B';
+        ctx.fillStyle = idx === 4 ? selectionColor : '#2B2B2B';
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
         ctx.fill();
@@ -446,7 +453,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
           ctx.strokeStyle = '#00ff00';
           ctx.lineWidth = 4;
         } else {
-          ctx.strokeStyle = isThisQuarterSelected ? '#FF8C00' : (isSelected ? '#E44A33' : (el.stroke || '#2B2B2B'));
+          ctx.strokeStyle = isThisQuarterSelected ? '#FF8C00' : (isSelected ? selectionColor : (el.stroke || '#2B2B2B'));
           ctx.lineWidth = isThisQuarterSelected ? 4 : (isSelected ? 2.5 : (el.strokeWidth || 1.5));
         }
         
@@ -483,7 +490,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       
       ctx.save();
       controlPoints.forEach((pt, idx) => {
-        ctx.fillStyle = idx === 0 ? '#E44A33' : '#2B2B2B';
+        ctx.fillStyle = idx === 0 ? selectionColor : '#2B2B2B';
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
         ctx.fill();
@@ -643,7 +650,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       } else {
         ctx.textAlign = 'left';
       }
-      ctx.fillStyle = isFlashing ? flashColor : (isSelected || isEditing ? '#E44A33' : (el.fill || '#1F1F1F'));
+      ctx.fillStyle = isFlashing ? flashColor : (isSelected || isEditing ? selectionColor : (el.fill || '#1F1F1F'));
       lines.forEach((line, index) => {
         const lineY = startY + index * lineHeight;
         ctx.fillText(line, textX, lineY);
@@ -657,7 +664,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     // Un rectangle en pointillés et 8 poignées apparaissent quand le texte est sélectionné ou en édition
     if (isSelected || isEditing) {
       // Rectangle de sélection en pointillés (toujours affiché)
-      ctx.strokeStyle = '#E44A33';
+      ctx.strokeStyle = selectionColor;
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 4]);
       ctx.strokeRect(topLeft.x, topLeft.y, rectWidth, rectHeight);
@@ -745,7 +752,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
         const shouldShow = Math.floor(Date.now() / blinkSpeed) % 2 === 0;
 
         if (shouldShow) {
-          ctx.strokeStyle = '#E44A33';
+          ctx.strokeStyle = selectionColor;
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.moveTo(cursorX, cursorY - scaledFontSize * 0.8);
@@ -849,20 +856,8 @@ export const drawWorkArea = (ctx, canvas, viewport, workArea) => {
   const centerX = (topLeft.x + bottomRight.x) / 2;
   const labelY = topLeft.y - 5;
   
-  // Fond semi-transparent pour le texte
   const labelText = `Zone de travail: ${workArea.width} × ${workArea.height} mm`;
-  const textMetrics = ctx.measureText(labelText);
-  const padding = 8;
   
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  ctx.fillRect(
-    centerX - textMetrics.width / 2 - padding,
-    labelY - 16,
-    textMetrics.width + padding * 2,
-    20
-  );
-  
-  // Texte
   ctx.fillStyle = '#E44A33';
   ctx.fillText(labelText, centerX, labelY);
   

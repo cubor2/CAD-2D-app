@@ -33,6 +33,7 @@ const Canvas = React.memo(({
   textSelectionStart,
   textSelectionEnd,
   workArea,
+  isPanning,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -142,7 +143,9 @@ const Canvas = React.memo(({
     ctx.lineTo(w - bevelLength, bevelLength);
     ctx.stroke();
     
-    drawSnapPoint(ctx, canvas, viewport, snapPoint, selectedIds);
+    if (!isPanning) {
+      drawSnapPoint(ctx, canvas, viewport, snapPoint, selectedIds);
+    }
 
     ctx.restore();
   };

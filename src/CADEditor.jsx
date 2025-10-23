@@ -121,12 +121,14 @@ const CADEditor = () => {
   }, [viewport]);
 
   const getTextCursorPositionFromClick = useCallback((textElement, clickPoint) => {
-    const canvas = getCanvasRef().current;
-    if (!canvas) return 0;
     if (!textElement.text) return 0;
     
-    const pos = worldToScreenWrapper(textElement.x, textElement.y);
-    const clickScreen = worldToScreenWrapper(clickPoint.x, clickPoint.y);
+    // Utiliser directement les coordonnées monde
+    const relativeX = clickPoint.x - textElement.x;
+    const relativeY = clickPoint.y - textElement.y;
+    
+    const canvas = getCanvasRef().current;
+    if (!canvas) return 0;
     
     const ctx = canvas.getContext('2d');
     ctx.font = `${textElement.fontStyle} ${textElement.fontWeight} ${textElement.fontSize}px ${textElement.fontFamily}`;
@@ -134,34 +136,52 @@ const CADEditor = () => {
     const lines = textElement.text.split('\n');
     const lineHeight = textElement.fontSize * 1.2;
     
-    let closestPos = 0;
-    let minDist = Infinity;
-    let currentPos = 0;
+    // Trouver la ligne la plus proche
+    let targetLineIndex = 0;
+    let minLineDist = Infinity;
     
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const lineY = pos.y - (lines.length - 1 - i) * lineHeight;
-      const distToLine = Math.abs(clickScreen.y - lineY);
+      // Calculer la position Y de chaque ligne (alignement vertical middle par défaut)
+      const totalHeight = lines.length * lineHeight;
+      const startY = textElement.height / 2 - totalHeight / 2;
+      const lineY = startY + (i + 0.5) * lineHeight;
+      const dist = Math.abs(relativeY - lineY);
       
-      if (distToLine < lineHeight / 2) {
-        for (let j = 0; j <= line.length; j++) {
-          const textBefore = line.slice(0, j);
-          const charX = pos.x + ctx.measureText(textBefore).width;
-          const dist = Math.abs(clickScreen.x - charX);
-          
-          if (dist < minDist) {
-            minDist = dist;
-            closestPos = currentPos + j;
-          }
-        }
-        return closestPos;
+      if (dist < minLineDist) {
+        minLineDist = dist;
+        targetLineIndex = i;
       }
-      
-      currentPos += line.length + 1;
     }
     
-    return textElement.text.length;
-  }, [worldToScreenWrapper]);
+    // Trouver la position dans la ligne
+    const line = lines[targetLineIndex];
+    let closestPos = 0;
+    let minCharDist = Infinity;
+    
+    // Calculer l'offset X du texte (alignement horizontal center par défaut)
+    const lineWidth = ctx.measureText(line).width;
+    const startX = textElement.width / 2 - lineWidth / 2;
+    
+    for (let j = 0; j <= line.length; j++) {
+      const textBefore = line.slice(0, j);
+      const charX = startX + ctx.measureText(textBefore).width;
+      const dist = Math.abs(relativeX - charX);
+      
+      if (dist < minCharDist) {
+        minCharDist = dist;
+        closestPos = j;
+      }
+    }
+    
+    // Calculer la position absolue dans le texte complet
+    let absolutePos = 0;
+    for (let i = 0; i < targetLineIndex; i++) {
+      absolutePos += lines[i].length + 1; // +1 pour le \n
+    }
+    absolutePos += closestPos;
+    
+    return absolutePos;
+  }, [getCanvasRef]);
 
   const updateSnapPointForDrag = (snapInfo) => {
     if (!snapInfo) {
@@ -182,14 +202,14 @@ const CADEditor = () => {
     }
   };
 
-  const applySnap = (point, excludeIds = [], autoSetSnapPoint = true) => {
+  const applySnap = (point, excludeIds = [], autoSetSnapPoint = true, shiftPressed = false) => {
     const result = computeSnap(point, {
       elements,
       excludeIds,
       viewport,
       guides,
       showRulers,
-      snapToElements,
+      snapToElements: shiftPressed ? false : snapToElements,
       snapToGrid,
       gridSize: GRID_SIZE
     });
@@ -383,7 +403,7 @@ const CADEditor = () => {
 
   const handleMoveElements = useCallback((dx, dy) => {
     if (tool === 'edit' && selectedEdge) {
-      setElements(prev => prev.map(el => {
+      updateElements(elements.map(el => {
         if (el.id !== selectedEdge.elementId) return el;
         
         if (el.type === 'rectangle') {
@@ -402,7 +422,7 @@ const CADEditor = () => {
       return;
     }
     
-    setElements(prev => prev.map(el => {
+    updateElements(elements.map(el => {
       if (!selectedIds.includes(el.id)) return el;
       
       if (el.type === 'line') {
@@ -420,7 +440,7 @@ const CADEditor = () => {
       }
       return el;
     }));
-  }, [selectedIds, selectedEdge, tool, setElements]);
+  }, [selectedIds, selectedEdge, tool, elements, updateElements]);
 
   const handleRotate = useCallback(() => {
     if (selectedIds.length === 0) return;
@@ -457,7 +477,7 @@ const CADEditor = () => {
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     
-    setElements(prev => prev.map(el => {
+    updateElements(elements.map(el => {
       if (!selectedIds.includes(el.id)) return el;
       
       if (el.type === 'line') {
@@ -530,7 +550,7 @@ const CADEditor = () => {
       }
       return el;
     }));
-  }, [selectedIds, elements, setElements]);
+  }, [selectedIds, elements, updateElements]);
 
   const handleFlipHorizontal = useCallback(() => {
     if (selectedIds.length === 0) return;
@@ -556,7 +576,7 @@ const CADEditor = () => {
     
     centerX /= selectedElements.length;
     
-    setElements(prev => prev.map(el => {
+    updateElements(elements.map(el => {
       if (!selectedIds.includes(el.id)) return el;
       
       if (el.type === 'line') {
@@ -600,7 +620,7 @@ const CADEditor = () => {
       }
       return el;
     }));
-  }, [selectedIds, elements, setElements]);
+  }, [selectedIds, elements, updateElements]);
 
   const handleFlipVertical = useCallback(() => {
     if (selectedIds.length === 0) return;
@@ -626,7 +646,7 @@ const CADEditor = () => {
     
     centerY /= selectedElements.length;
     
-    setElements(prev => prev.map(el => {
+    updateElements(elements.map(el => {
       if (!selectedIds.includes(el.id)) return el;
       
       if (el.type === 'line') {
@@ -670,7 +690,170 @@ const CADEditor = () => {
       }
       return el;
     }));
-  }, [selectedIds, elements, setElements]);
+  }, [selectedIds, elements, updateElements]);
+
+  const handleResizeElement = useCallback((delta, fromOppositeEnd = false) => {
+    if (selectedIds.length === 0) return;
+    
+    updateElements(elements.map(el => {
+      if (!selectedIds.includes(el.id)) return el;
+      
+      if (el.type === 'line') {
+        const dx = el.x2 - el.x1;
+        const dy = el.y2 - el.y1;
+        const currentLength = Math.sqrt(dx * dx + dy * dy);
+        if (currentLength === 0) return el;
+        
+        const isHorizontal = Math.abs(dx) > Math.abs(dy);
+        
+        if (isHorizontal) {
+          if (fromOppositeEnd) {
+            const newX1 = el.x1 - delta;
+            return { ...el, x1: newX1 };
+          } else {
+            const newX2 = el.x2 + delta;
+            return { ...el, x2: newX2 };
+          }
+        } else {
+          if (fromOppositeEnd) {
+            if (el.y1 > el.y2) {
+              const newY1 = el.y1 + delta;
+              return { ...el, y1: newY1 };
+            } else {
+              const newY2 = el.y2 + delta;
+              return { ...el, y2: newY2 };
+            }
+          } else {
+            if (el.y1 < el.y2) {
+              const newY1 = el.y1 - delta;
+              return { ...el, y1: newY1 };
+            } else {
+              const newY2 = el.y2 - delta;
+              return { ...el, y2: newY2 };
+            }
+          }
+        }
+      } else if (el.type === 'rectangle') {
+        const newWidth = Math.max(1, Math.abs(el.width) + delta);
+        const newHeight = Math.max(1, Math.abs(el.height) + delta);
+        
+        if (fromOppositeEnd) {
+          return {
+            ...el,
+            x: el.x - delta,
+            y: el.y + delta,
+            width: el.width < 0 ? -newWidth : newWidth,
+            height: el.height < 0 ? -newHeight : newHeight
+          };
+        } else {
+          return {
+            ...el,
+            y: el.y - delta,
+            width: el.width < 0 ? -newWidth : newWidth,
+            height: el.height < 0 ? -newHeight : newHeight
+          };
+        }
+      } else if (el.type === 'circle') {
+        const currentRadius = el.radiusX || el.radius;
+        const newRadius = Math.max(1, currentRadius + delta);
+        
+        if (el.radiusX && el.radiusY && Math.abs(el.radiusX - el.radiusY) > 0.01) {
+          const scaleX = newRadius / currentRadius;
+          const scaleY = newRadius / currentRadius;
+          return {
+            ...el,
+            radiusX: el.radiusX * scaleX,
+            radiusY: el.radiusY * scaleY
+          };
+        } else {
+          return {
+            ...el,
+            radius: newRadius,
+            radiusX: newRadius,
+            radiusY: newRadius
+          };
+        }
+      } else if (el.type === 'arc') {
+        const currentRadius = el.radiusX || el.radius;
+        const newRadius = Math.max(1, currentRadius + delta);
+        return {
+          ...el,
+          radius: newRadius,
+          radiusX: newRadius,
+          radiusY: newRadius
+        };
+      } else if (el.type === 'curve') {
+        const dx = el.x2 - el.x1;
+        const dy = el.y2 - el.y1;
+        const currentLength = Math.sqrt(dx * dx + dy * dy);
+        if (currentLength === 0) return el;
+        
+        const isHorizontal = Math.abs(dx) > Math.abs(dy);
+        
+        const cdx = el.cpx - el.x1;
+        const cdy = el.cpy - el.y1;
+        
+        if (isHorizontal) {
+          if (fromOppositeEnd) {
+            const newX1 = el.x1 - delta;
+            return {
+              ...el,
+              x1: newX1,
+              cpx: newX1 + cdx,
+            };
+          } else {
+            const newX2 = el.x2 + delta;
+            const scale = (newX2 - el.x1) / dx;
+            return {
+              ...el,
+              x2: newX2,
+              cpx: el.x1 + cdx * scale
+            };
+          }
+        } else {
+          if (fromOppositeEnd) {
+            if (el.y1 > el.y2) {
+              const newY1 = el.y1 + delta;
+              return {
+                ...el,
+                y1: newY1,
+                cpy: newY1 + cdy
+              };
+            } else {
+              const newDy = dy - delta;
+              const scale = newDy / dy;
+              const newY2 = el.y2 + delta;
+              return {
+                ...el,
+                y2: newY2,
+                cpy: el.y1 + cdy * scale
+              };
+            }
+          } else {
+            if (el.y1 < el.y2) {
+              const newY1 = el.y1 - delta;
+              return {
+                ...el,
+                y1: newY1,
+                cpy: newY1 + cdy
+              };
+            } else {
+              const newDy = dy + delta;
+              const scale = newDy / dy;
+              const newY2 = el.y2 - delta;
+              return {
+                ...el,
+                y2: newY2,
+                cpy: el.y1 + cdy * scale
+              };
+            }
+          }
+        }
+      }
+      
+      return el;
+    }));
+  }, [selectedIds, elements, updateElements]);
 
   const handleNew = useCallback(() => {
     if (hasUnsavedChanges) {
@@ -698,6 +881,9 @@ const CADEditor = () => {
           const data = JSON.parse(event.target.result);
           updateElements(data.elements || []);
           setGuides(data.guides || []);
+          if (data.workArea) {
+            setWorkArea(data.workArea);
+          }
           setCurrentFileName(file.name.replace('.json', ''));
           setHasUnsavedChanges(false);
         } catch (error) {
@@ -740,6 +926,7 @@ const CADEditor = () => {
     const data = {
       elements,
       guides,
+      workArea,
       version: '1.0'
     };
     
@@ -751,7 +938,7 @@ const CADEditor = () => {
     a.click();
     URL.revokeObjectURL(url);
     setHasUnsavedChanges(false);
-  }, [elements, guides, currentFileName]);
+  }, [elements, guides, workArea, currentFileName]);
 
   const handleSaveAs = useCallback(() => {
     const newName = prompt('Entrez le nom du fichier :', currentFileName);
@@ -762,6 +949,7 @@ const CADEditor = () => {
     const data = {
       elements,
       guides,
+      workArea,
       version: '1.0'
     };
     
@@ -773,7 +961,7 @@ const CADEditor = () => {
     a.click();
     URL.revokeObjectURL(url);
     setHasUnsavedChanges(false);
-  }, [elements, guides, currentFileName]);
+  }, [elements, guides, workArea, currentFileName]);
 
   const handleLaserExport = useCallback(() => {
     if (elements.length === 0) {
@@ -800,70 +988,33 @@ const CADEditor = () => {
       return;
     }
     
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    
-    const canvas = getCanvasRef().current;
-    const ctx = canvas ? canvas.getContext('2d') : null;
-    
-    elements.forEach(el => {
-      if (el.type === 'line') {
-        minX = Math.min(minX, el.x1, el.x2);
-        minY = Math.min(minY, el.y1, el.y2);
-        maxX = Math.max(maxX, el.x1, el.x2);
-        maxY = Math.max(maxY, el.y1, el.y2);
-      } else if (el.type === 'rectangle') {
-        minX = Math.min(minX, el.x);
-        minY = Math.min(minY, el.y);
-        maxX = Math.max(maxX, el.x + el.width);
-        maxY = Math.max(maxY, el.y + el.height);
-      } else if (el.type === 'circle') {
-        const rx = el.radiusX || el.radius;
-        const ry = el.radiusY || el.radius;
-        minX = Math.min(minX, el.cx - rx);
-        minY = Math.min(minY, el.cy - ry);
-        maxX = Math.max(maxX, el.cx + rx);
-        maxY = Math.max(maxY, el.cy + ry);
-      } else if (el.type === 'arc') {
-        const rx = el.radiusX || el.radius;
-        const ry = el.radiusY || el.radius;
-        minX = Math.min(minX, el.cx - rx);
-        minY = Math.min(minY, el.cy - ry);
-        maxX = Math.max(maxX, el.cx + rx);
-        maxY = Math.max(maxY, el.cy + ry);
-      } else if (el.type === 'text' && ctx) {
-        ctx.save();
-        ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
-        const metrics = ctx.measureText(el.text);
-        const textWidth = metrics.width;
-        const textHeight = el.fontSize;
-        ctx.restore();
-        minX = Math.min(minX, el.x);
-        minY = Math.min(minY, el.y - textHeight);
-        maxX = Math.max(maxX, el.x + textWidth);
-        maxY = Math.max(maxY, el.y);
-      }
-    });
-    
-    const padding = 5;
-    const width = maxX - minX + padding * 2;
-    const height = maxY - minY + padding * 2;
+    const width = workArea.width;
+    const height = workArea.height;
+    const offsetX = width / 2;
+    const offsetY = height / 2;
     
     if (format === 'svg') {
-      let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX - padding} ${minY - padding} ${width} ${height}" width="${width}mm" height="${height}mm">\n`;
-      svgContent += `  <!-- 1 unité = 1mm -->\n`;
+      let svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n`;
+      svgContent += `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}mm" height="${height}mm">\n`;
+      svgContent += `  <!-- Export CAD 2D Editor -->\n`;
+      svgContent += `  <!-- Zone de travail: ${width} × ${height} mm -->\n`;
+      svgContent += `  <!-- 1 unité = 1mm -->\n\n`;
+      
+      svgContent += `  <!-- Rectangle de référence de la zone de travail -->\n`;
+      svgContent += `  <rect x="0" y="0" width="${width}" height="${height}" stroke="#0000ff" stroke-width="0.01" fill="none" opacity="0.3" />\n\n`;
       
       elements.forEach(el => {
         if (el.type === 'line') {
-          svgContent += `  <line x1="${el.x1}" y1="${el.y1}" x2="${el.x2}" y2="${el.y2}" stroke="black" stroke-width="0.3" fill="none" />\n`;
+          svgContent += `  <line x1="${el.x1 + offsetX}" y1="${el.y1 + offsetY}" x2="${el.x2 + offsetX}" y2="${el.y2 + offsetY}" stroke="black" stroke-width="0.3" fill="none" />\n`;
         } else if (el.type === 'rectangle') {
-          svgContent += `  <rect x="${el.x}" y="${el.y}" width="${el.width}" height="${el.height}" stroke="black" stroke-width="0.3" fill="none" />\n`;
+          svgContent += `  <rect x="${el.x + offsetX}" y="${el.y + offsetY}" width="${el.width}" height="${el.height}" stroke="black" stroke-width="0.3" fill="none" />\n`;
         } else if (el.type === 'circle') {
           const rx = el.radiusX || el.radius;
           const ry = el.radiusY || el.radius;
           if (rx === ry) {
-            svgContent += `  <circle cx="${el.cx}" cy="${el.cy}" r="${rx}" stroke="black" stroke-width="0.3" fill="none" />\n`;
+            svgContent += `  <circle cx="${el.cx + offsetX}" cy="${el.cy + offsetY}" r="${rx}" stroke="black" stroke-width="0.3" fill="none" />\n`;
           } else {
-            svgContent += `  <ellipse cx="${el.cx}" cy="${el.cy}" rx="${rx}" ry="${ry}" stroke="black" stroke-width="0.3" fill="none" />\n`;
+            svgContent += `  <ellipse cx="${el.cx + offsetX}" cy="${el.cy + offsetY}" rx="${rx}" ry="${ry}" stroke="black" stroke-width="0.3" fill="none" />\n`;
           }
         } else if (el.type === 'arc') {
           const rx = el.radiusX || el.radius;
@@ -872,11 +1023,24 @@ const CADEditor = () => {
           const startY = el.cy + ry * Math.sin(el.startAngle);
           const endX = el.cx + rx * Math.cos(el.endAngle);
           const endY = el.cy + ry * Math.sin(el.endAngle);
-          const largeArc = (el.endAngle - el.startAngle) > Math.PI ? 1 : 0;
-          svgContent += `  <path d="M ${startX} ${startY} A ${rx} ${ry} 0 ${largeArc} 1 ${endX} ${endY}" stroke="black" stroke-width="0.3" fill="none" />\n`;
+          
+          let angleDiff = el.endAngle - el.startAngle;
+          while (angleDiff < 0) angleDiff += 2 * Math.PI;
+          while (angleDiff > 2 * Math.PI) angleDiff -= 2 * Math.PI;
+          
+          const largeArc = angleDiff > Math.PI ? 1 : 0;
+          const sweepFlag = 1;
+          
+          svgContent += `  <path d="M ${startX + offsetX} ${startY + offsetY} A ${rx} ${ry} 0 ${largeArc} ${sweepFlag} ${endX + offsetX} ${endY + offsetY}" stroke="black" stroke-width="0.3" fill="none" />\n`;
+        } else if (el.type === 'curve') {
+          if (el.cpx !== undefined && el.cpy !== undefined) {
+            svgContent += `  <path d="M ${el.x1 + offsetX} ${el.y1 + offsetY} Q ${el.cpx + offsetX} ${el.cpy + offsetY} ${el.x2 + offsetX} ${el.y2 + offsetY}" stroke="black" stroke-width="0.3" fill="none" />\n`;
+          } else {
+            svgContent += `  <line x1="${el.x1 + offsetX}" y1="${el.y1 + offsetY}" x2="${el.x2 + offsetX}" y2="${el.y2 + offsetY}" stroke="black" stroke-width="0.3" fill="none" />\n`;
+          }
         } else if (el.type === 'text') {
           const escapedText = el.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          svgContent += `  <text x="${el.x}" y="${el.y}" font-family="${el.fontFamily}" font-size="${el.fontSize}" font-weight="${el.fontWeight}" font-style="${el.fontStyle}" fill="black">${escapedText}</text>\n`;
+          svgContent += `  <text x="${el.x + offsetX}" y="${el.y + offsetY}" font-family="${el.fontFamily}" font-size="${el.fontSize}" font-weight="${el.fontWeight}" font-style="${el.fontStyle}" fill="black">${escapedText}</text>\n`;
         }
       });
       
@@ -903,7 +1067,7 @@ const CADEditor = () => {
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
       
       ctx.save();
-      ctx.translate(-minX * scale + padding * scale, -minY * scale + padding * scale);
+      ctx.translate(offsetX * scale, offsetY * scale);
       ctx.scale(scale, scale);
       
       ctx.strokeStyle = 'black';
@@ -961,7 +1125,7 @@ const CADEditor = () => {
     } else if (format === 'dxf') {
       alert('L\'export DXF sera bientôt implémenté !');
     }
-  }, [elements, currentFileName]);
+  }, [elements, currentFileName, workArea]);
 
   useEffect(() => {
     setHasUnsavedChanges(true);
@@ -975,6 +1139,7 @@ const CADEditor = () => {
       if (!textEl) return;
 
       if (e.key === 'Escape') {
+        updateElements(elements);
         setEditingTextId(null);
         setTextCursorPosition(0);
         setTextSelectionStart(0);
@@ -1136,6 +1301,7 @@ const CADEditor = () => {
     onGroup: createGroup,
     onUngroup: ungroupSelected,
     onMoveElements: handleMoveElements,
+    onResizeElement: handleResizeElement,
     onNew: handleNew,
     onOpen: handleOpen,
     onSave: handleSave,
@@ -1149,6 +1315,8 @@ const CADEditor = () => {
   const cursor = useMemo(() => {
     if (isPanning || spacePressed) return 'grab';
     
+    if (editingTextId) return 'text';
+    
     if (isDraggingElements) return 'move';
     
     if (editingPoint) {
@@ -1157,7 +1325,8 @@ const CADEditor = () => {
       if (pointType === 'topRight' || pointType === 'bottomLeft') return 'nesw-resize';
       if (pointType === 'top' || pointType === 'bottom') return 'ns-resize';
       if (pointType === 'left' || pointType === 'right') return 'ew-resize';
-      if (pointType === 'middle' || pointType === 'start' || pointType === 'end' || pointType === 'control') return 'move';
+      if (pointType === 'middle' || pointType === 'control') return 'grabbing';
+      if (pointType === 'start' || pointType === 'end') return 'grabbing';
     }
     
     if (isDraggingEdge) {
@@ -1170,7 +1339,12 @@ const CADEditor = () => {
     if (tool !== 'select' && tool !== 'edit') return 'crosshair';
     
     return hoverCursor;
-  }, [isPanning, spacePressed, tool, isDraggingElements, editingPoint, isDraggingEdge, selectedEdge, hoverCursor]);
+  }, [isPanning, spacePressed, tool, isDraggingElements, editingPoint, isDraggingEdge, selectedEdge, hoverCursor, editingTextId]);
+
+  // Réinitialiser le hover cursor quand on change de tool pour forcer le re-render avec les bonnes couleurs
+  useEffect(() => {
+    setHoverCursor('default');
+  }, [tool]);
 
   // Les gestionnaires d'événements seront dans un fichier séparé ou inline ci-dessous
   // Pour l'instant, je vais créer des versions simplifiées
@@ -1195,7 +1369,7 @@ const CADEditor = () => {
       return;
     }
     
-    const snapped = applySnap(point);
+    const snapped = applySnap(point, [], true, e.shiftKey);
     
     // Vérifier la création de nouveaux guides depuis la règle (priorité haute)
     if (showRulers) {
@@ -1203,12 +1377,14 @@ const CADEditor = () => {
       const rulerZoneSize = RULER_SIZE + borderWidth;
       
       if (canvasX >= borderWidth && canvasX < rulerZoneSize && canvasY > rulerZoneSize) {
-        const newGuide = { type: 'vertical', position: point.x, id: Date.now() };
+        const snappedPosition = Math.round(point.x);
+        const newGuide = { type: 'vertical', position: snappedPosition, id: Date.now() };
         setGuides(prev => [...prev, newGuide]);
         setIsDraggingGuide(newGuide.id);
         return;
       } else if (canvasY >= borderWidth && canvasY < rulerZoneSize && canvasX > rulerZoneSize) {
-        const newGuide = { type: 'horizontal', position: point.y, id: Date.now() };
+        const snappedPosition = Math.round(point.y);
+        const newGuide = { type: 'horizontal', position: snappedPosition, id: Date.now() };
         setGuides(prev => [...prev, newGuide]);
         setIsDraggingGuide(newGuide.id);
         return;
@@ -1347,40 +1523,92 @@ const CADEditor = () => {
     if (tool === 'edit') {
       const CLICK_DISTANCE = 20 / viewport.zoom;
       
+      // Détection du double-clic pour passer automatiquement en mode sélection
+      const currentTime = Date.now();
+      const clickedElement = [...elements].reverse().find(el => {
+        if (selectedIds.includes(el.id)) {
+          if (el.type === 'text') {
+            return snapped.x >= el.x && snapped.x <= el.x + el.width &&
+                   snapped.y >= el.y && snapped.y <= el.y + el.height;
+          } else if (el.type === 'rectangle') {
+            return snapped.x >= el.x && snapped.x <= el.x + el.width &&
+                   snapped.y >= el.y && snapped.y <= el.y + el.height;
+          } else if (el.type === 'circle') {
+            const dx = snapped.x - el.cx;
+            const dy = snapped.y - el.cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            return Math.abs(dist - (el.radiusX || el.radius)) < CLICK_DISTANCE;
+          } else if (el.type === 'arc') {
+            const dx = snapped.x - el.cx;
+            const dy = snapped.y - el.cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (Math.abs(dist - (el.radiusX || el.radius)) < CLICK_DISTANCE) {
+              const clickAngle = Math.atan2(dy, dx);
+              return isAngleBetween(clickAngle, el.startAngle, el.endAngle);
+            }
+            return false;
+          } else if (el.type === 'line' || el.type === 'curve') {
+            return pointToLineDistance({ x: snapped.x, y: snapped.y }, el) < CLICK_DISTANCE;
+          }
+        }
+        return false;
+      });
+      
+      if (clickedElement) {
+        const isDoubleClick = currentTime - lastClickTime < 300 && lastClickedId === clickedElement.id;
+        
+        if (isDoubleClick) {
+          // Double-clic détecté : revenir en mode sélection
+          const currentSelection = [...selectedIds];
+          
+          setEditingTextId(null);
+          setTextCursorPosition(0);
+          setTextSelectionStart(0);
+          setTextSelectionEnd(0);
+          setEditingPoint(null);
+          setSelectedEdge(null);
+          setIsDraggingEdge(false);
+          setHoverCursor('default');
+          setLastClickTime(0);
+          setLastClickedId(null);
+          setSnapPoint(null);
+          
+          // Désélectionner puis re-sélectionner pour forcer le re-render avec les bonnes couleurs
+          setSelectedIds([]);
+          setTool('select');
+          
+          // Re-sélectionner après un court délai
+          setTimeout(() => {
+            setSelectedIds(currentSelection);
+          }, 0);
+          
+          return;
+        }
+        
+        setLastClickTime(currentTime);
+        setLastClickedId(clickedElement.id);
+      }
+      
       if (editingTextId) {
         const textEl = elements.find(e => e.id === editingTextId);
         if (textEl) {
-          const canvas = getCanvasRef().current;
-          if (canvas) {
-            const pos = worldToScreenWrapper(textEl.x, textEl.y);
-            const clickScreen = worldToScreenWrapper(snapped.x, snapped.y);
-            
-            const ctx = canvas.getContext('2d');
-            ctx.save();
-            ctx.font = `${textEl.fontStyle} ${textEl.fontWeight} ${textEl.fontSize}px ${textEl.fontFamily}`;
-            const lines = textEl.text ? textEl.text.split('\n') : [''];
-            const lineHeight = textEl.fontSize * 1.2;
-            const widths = lines.map(line => ctx.measureText(line).width);
-            const textWidth = Math.max(...widths, textEl.fontSize * 3);
-            const textHeight = Math.max(lines.length * lineHeight, textEl.fontSize);
-            ctx.restore();
-            
-            const isInsideText = clickScreen.x >= pos.x && clickScreen.x <= pos.x + textWidth &&
-                                 clickScreen.y >= pos.y - textHeight && clickScreen.y <= pos.y;
-            
-            if (isInsideText) {
-              const cursorPos = getTextCursorPositionFromClick(textEl, snapped);
-              setTextCursorPosition(cursorPos);
-              setTextSelectionStart(cursorPos);
-              setTextSelectionEnd(cursorPos);
-              setIsDraggingTextSelection(true);
-              return;
-            } else {
-              setEditingTextId(null);
-              setTextCursorPosition(0);
-              setTextSelectionStart(0);
-              setTextSelectionEnd(0);
-            }
+          // Utiliser les dimensions de la boîte du texte (pas le texte calculé)
+          const isInsideText = snapped.x >= textEl.x && snapped.x <= textEl.x + textEl.width &&
+                               snapped.y >= textEl.y && snapped.y <= textEl.y + textEl.height;
+          
+          if (isInsideText) {
+            const cursorPos = getTextCursorPositionFromClick(textEl, snapped);
+            setTextCursorPosition(cursorPos);
+            setTextSelectionStart(cursorPos);
+            setTextSelectionEnd(cursorPos);
+            setIsDraggingTextSelection(true);
+            return;
+          } else {
+            updateElements(elements);
+            setEditingTextId(null);
+            setTextCursorPosition(0);
+            setTextSelectionStart(0);
+            setTextSelectionEnd(0);
           }
         }
       }
@@ -1389,24 +1617,25 @@ const CADEditor = () => {
         let controlPoints = [];
         
         if (el.type === 'text') {
-          const currentTime = Date.now();
-          const isDoubleClick = currentTime - lastClickTime < 300 && lastClickedId === el.id;
+          // Pour les textes, on détecte d'abord si on clique dans le texte lui-même
+          // avant de vérifier les control points (pour permettre l'édition de texte)
           
-          if (isDoubleClick) {
+          // Utiliser les dimensions de la boîte du texte (pas le texte calculé)
+          const isInsideText = snapped.x >= el.x && snapped.x <= el.x + el.width &&
+                               snapped.y >= el.y && snapped.y <= el.y + el.height;
+          
+          if (isInsideText) {
             setEditingTextId(el.id);
             const cursorPos = getTextCursorPositionFromClick(el, snapped);
             setTextCursorPosition(cursorPos);
             setTextSelectionStart(cursorPos);
             setTextSelectionEnd(cursorPos);
-            setLastClickTime(0);
-            setLastClickedId(null);
+            setIsDraggingTextSelection(true);
             setSnapPoint(null);
             return;
           }
           
-          setLastClickTime(currentTime);
-          setLastClickedId(el.id);
-          
+          // Si on ne clique pas dans le texte, vérifier les control points
           controlPoints = getElementControlPoints(el, viewport);
           
           for (const cp of controlPoints) {
@@ -1420,21 +1649,6 @@ const CADEditor = () => {
                 startPoint: { x: snapped.x, y: snapped.y }
               });
               setDragStart({ x: snapped.x, y: snapped.y });
-              setSnapPoint(null);
-              return;
-            }
-          }
-          
-          if (!editingTextId || editingTextId !== el.id) {
-            const isInsideRect = snapped.x >= el.x && snapped.x <= el.x + el.width &&
-                                 snapped.y >= el.y && snapped.y <= el.y + el.height;
-            
-            if (isInsideRect) {
-              setEditingTextId(el.id);
-              const cursorPos = getTextCursorPositionFromClick(el, snapped);
-              setTextCursorPosition(cursorPos);
-              setTextSelectionStart(cursorPos);
-              setTextSelectionEnd(cursorPos);
               setSnapPoint(null);
               return;
             }
@@ -1593,7 +1807,8 @@ const CADEditor = () => {
       }
 
       // Vérifier si on clique à l'intérieur d'un rectangle ou texte déjà sélectionné (pour le déplacer)
-      for (const el of elements.filter(e => selectedIds.includes(e.id) && (e.type === 'rectangle' || e.type === 'text'))) {
+      // SAUF pour les textes en mode édition (car on veut éditer le texte, pas le déplacer)
+      for (const el of elements.filter(e => selectedIds.includes(e.id) && (e.type === 'rectangle' || (e.type === 'text' && tool !== 'edit')))) {
         const isInsideElement = snapped.x >= el.x && snapped.x <= el.x + el.width &&
                                 snapped.y >= el.y && snapped.y <= el.y + el.height;
         
@@ -1717,6 +1932,9 @@ const CADEditor = () => {
         } else if (!selectedIds.includes(clicked.id)) {
           setSelectedIds([clicked.id]);
           if (clicked.type === 'text') {
+            if (editingTextId && editingTextId !== clicked.id) {
+              updateElements(elements);
+            }
             setEditingTextId(null);
             setTextCursorPosition(0);
             setTextSelectionStart(0);
@@ -1725,6 +1943,9 @@ const CADEditor = () => {
         }
       } else {
         if (!e.shiftKey) {
+          if (editingTextId) {
+            updateElements(elements);
+          }
           clearSelection();
           setSelectedEdge(null);
           setEditingTextId(null);
@@ -1786,11 +2007,11 @@ const CADEditor = () => {
       setGuides(prev => prev.map(guide => {
         if (guide.id === isDraggingGuide) {
           if (guide.type === 'horizontal') {
-            const snappedY = findGuideSnapPosition('horizontal', point.y, elements, viewport);
+            const snappedY = Math.round(findGuideSnapPosition('horizontal', point.y, elements, viewport));
             setSnapPoint({ x: point.x, y: snappedY, type: 'guide', priority: 100, isGuide: true });
             return { ...guide, position: snappedY };
           } else {
-            const snappedX = findGuideSnapPosition('vertical', point.x, elements, viewport);
+            const snappedX = Math.round(findGuideSnapPosition('vertical', point.x, elements, viewport));
             setSnapPoint({ x: snappedX, y: point.y, type: 'guide', priority: 100, isGuide: true });
             return { ...guide, position: snappedX };
           }
@@ -1805,7 +2026,7 @@ const CADEditor = () => {
       return;
     }
 
-    if (!isDrawing && !isDraggingElements && !editingPoint && !isDraggingEdge && !isDraggingTextSelection && !selectionBox) {
+    if (!isDrawing && !isDraggingElements && !editingPoint && !isDraggingEdge && !isDraggingTextSelection && !selectionBox && !editingTextId) {
       let snapX = null;
       let snapY = null;
       let snappedX = point.x;
@@ -1864,11 +2085,10 @@ const CADEditor = () => {
     }
 
     if ((tool === 'edit' || tool === 'text') && isDraggingTextSelection && editingTextId) {
-      const snapped = applySnap(point, [editingTextId], false);
-      updateSnapPointForDrag(snapped.snapInfo);
+      // Ne pas utiliser de snap pendant la sélection de texte pour plus de précision
       const textEl = elements.find(e => e.id === editingTextId);
       if (textEl) {
-        const cursorPos = getTextCursorPositionFromClick(textEl, snapped);
+        const cursorPos = getTextCursorPositionFromClick(textEl, point);
         setTextCursorPosition(cursorPos);
         setTextSelectionEnd(cursorPos);
       }
@@ -2280,7 +2500,7 @@ const CADEditor = () => {
     }
 
     if (isDrawing && startPoint) {
-      const snapped = applySnap(point, []);
+      const snapped = applySnap(point, [], true, e.shiftKey);
       if (tool === 'line') {
         let endX = snapped.x;
         let endY = snapped.y;
@@ -2373,6 +2593,7 @@ const CADEditor = () => {
     }
     
     if (editingPoint) {
+      updateElements(elements);
       setEditingPoint(null);
       setDragStart(null);
       setSnapPoint(null);
@@ -2380,6 +2601,7 @@ const CADEditor = () => {
     }
 
     if (isDraggingEdge) {
+      updateElements(elements);
       setIsDraggingEdge(false);
       setDragStart(null);
       setEdgeOriginalElement(null);
@@ -2494,12 +2716,16 @@ const CADEditor = () => {
       setSnapPoint(null);
     }
 
+    if (isDraggingElements && dragOriginalElements.length > 0) {
+      updateElements(elements);
+    }
+
     setDragStart(null);
     setIsDraggingElements(false);
     setDragOriginalElements([]);
     setSnapPoint(null);
     setHoverCursor('default');
-  }, [isDraggingElements, isDraggingGuide, showRulers, guides, worldToScreenWrapper, setGuides, setSnapPoint, isPanning, endPan, editingPoint, setEditingPoint, isDraggingEdge, selectionBox, dragStart, elements, setSelectedIds, isDrawing, currentElement, updateElements, isDraggingTextSelection, setIsDraggingTextSelection, selectedIds, setElements]);
+  }, [isDraggingElements, isDraggingGuide, showRulers, guides, worldToScreenWrapper, setGuides, setSnapPoint, isPanning, endPan, editingPoint, setEditingPoint, isDraggingEdge, selectionBox, dragStart, elements, setSelectedIds, isDrawing, currentElement, updateElements, isDraggingTextSelection, setIsDraggingTextSelection, selectedIds, setElements, dragOriginalElements]);
 
   const handleWheel = useCallback((e) => {
     if (e.shiftKey) {
@@ -2558,7 +2784,7 @@ const CADEditor = () => {
               elements={elements}
               selectedIds={selectedIds}
               currentElement={currentElement}
-              snapPoint={snapPoint}
+              snapPoint={editingTextId ? null : snapPoint}
               selectionBox={selectionBox}
               drawOrigin={drawOrigin}
               selectedEdge={selectedEdge}
@@ -2574,6 +2800,7 @@ const CADEditor = () => {
               textSelectionStart={textSelectionStart}
               textSelectionEnd={textSelectionEnd}
               workArea={workArea}
+              isPanning={isPanning}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -2598,6 +2825,7 @@ const CADEditor = () => {
         selectedIds={selectedIds}
         elements={elements}
         onUpdateElement={updateElement}
+        onResizeElement={handleResizeElement}
         setElements={setElements}
         workArea={workArea}
         onWorkAreaChange={setWorkArea}

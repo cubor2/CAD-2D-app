@@ -23,7 +23,7 @@ export const useViewport = () => {
   const handleZoom = (zoomFactor) => {
     setViewport(prev => ({
       ...prev,
-      zoom: Math.max(0.1, Math.min(10, prev.zoom * zoomFactor))
+      zoom: Math.max(0.1, Math.min(15.12, prev.zoom * zoomFactor))
     }));
   };
 
