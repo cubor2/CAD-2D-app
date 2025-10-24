@@ -1,6 +1,22 @@
 import React from 'react';
 import { MousePointer, Edit3, Minus, Square, Circle, Type } from 'lucide-react';
 
+const FingerJointIcon = ({ size = 20, strokeWidth = 2.5, className = "" }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={strokeWidth}
+    strokeLinecap="square"
+    strokeLinejoin="miter"
+    className={className}
+  >
+    <path d="M 3 17 L 3 13 L 7 13 L 7 17 L 11 17 L 11 13 L 15 13 L 15 17 L 19 17 L 19 13 L 21 13" />
+  </svg>
+);
+
 const Toolbar = React.memo(({ tool, onToolChange, onClearSelectedEdge }) => {
   const tools = [
     { id: 'select', icon: MousePointer, label: 'Sélection/Déplacement (S)', shortcut: 'S' },
@@ -8,7 +24,8 @@ const Toolbar = React.memo(({ tool, onToolChange, onClearSelectedEdge }) => {
     { id: 'line', icon: Minus, label: 'Ligne (L)', shortcut: 'L' },
     { id: 'rectangle', icon: Square, label: 'Rectangle (R)', shortcut: 'R' },
     { id: 'circle', icon: Circle, label: 'Cercle (C)', shortcut: 'C' },
-    { id: 'text', icon: Type, label: 'Texte (T)', shortcut: 'T' }
+    { id: 'text', icon: Type, label: 'Texte (T)', shortcut: 'T' },
+    { id: 'fingerJoint', icon: FingerJointIcon, label: 'Créneaux (F)', shortcut: 'F' }
   ];
 
   const handleToolClick = (toolId) => {

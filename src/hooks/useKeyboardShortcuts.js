@@ -70,6 +70,10 @@ export const useKeyboardShortcuts = ({
           onToolChange('line');
           return;
         }
+        if (e.key === 'f' || e.key === 'F') {
+          onToolChange('fingerJoint');
+          return;
+        }
         if (e.key === 'r' || e.key === 'R') {
           onToolChange('rectangle');
           return;

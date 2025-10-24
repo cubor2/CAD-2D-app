@@ -132,7 +132,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, on
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     
     selectedElements.forEach(el => {
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         minX = Math.min(minX, el.x1, el.x2);
         minY = Math.min(minY, el.y1, el.y2);
         maxX = Math.max(maxX, el.x1, el.x2);
@@ -184,7 +184,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, on
 
     let minX = Infinity, minY = Infinity;
     selectedElements.forEach(el => {
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         minX = Math.min(minX, el.x1, el.x2);
         minY = Math.min(minY, el.y1, el.y2);
       } else if (el.type === 'rectangle') {
@@ -209,7 +209,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, on
     setElements(prev => prev.map(el => {
       if (!selectedIds.includes(el.id)) return el;
 
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         return {
           ...el,
           x1: minX + (el.x1 - minX) * scaleX,
@@ -295,12 +295,12 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, on
         />
         
         {selectedIds.length > 0 && (
-          <div className="border-t-2 border-drawhard-dark pt-3 px-4 pb-2">
-            <div className="flex items-center justify-between mb-3">
+          <div className="border-t-2 border-drawhard-dark pt-3 pb-3">
+            <div className="flex items-center justify-between mb-3 px-4">
               <h5 className="text-xs font-bold uppercase tracking-wide text-left">Transformation</h5>
               <p className="text-xs text-drawhard-hover pr-1">{selectedIds.length} élément(s)</p>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 px-4">
                 {selectionBounds && (
                   <div>
                     <div className="flex gap-1 items-end">
@@ -494,6 +494,114 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, on
                   min="1"
                   step="1"
                 />
+              </div>
+            )}
+            {selectedElement.type === 'fingerJoint' && (
+              <div className="space-y-2 border-t-2 border-drawhard-dark pt-3 -mx-4 px-4 mt-3">
+                <h5 className="text-xs font-bold uppercase tracking-wide text-left mb-2">Paramètres des créneaux</h5>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-xs text-drawhard-hover block mb-1 text-left">Longueur</label>
+                    <input 
+                      type="number"
+                      value={Math.round(Math.sqrt(
+                        (selectedElement.x2 - selectedElement.x1) ** 2 + 
+                        (selectedElement.y2 - selectedElement.y1) ** 2
+                      ))}
+                      onChange={(e) => {
+                        const newLength = parseInt(e.target.value) || 0;
+                        if (newLength < 1) return;
+                        
+                        const currentLength = Math.sqrt(
+                          (selectedElement.x2 - selectedElement.x1) ** 2 + 
+                          (selectedElement.y2 - selectedElement.y1) ** 2
+                        );
+                        if (currentLength === 0) return;
+                        
+                        const ratio = newLength / currentLength;
+                        const dx = selectedElement.x2 - selectedElement.x1;
+                        const dy = selectedElement.y2 - selectedElement.y1;
+                        
+                        onUpdateElement(selectedElement.id, {
+                          x2: selectedElement.x1 + dx * ratio,
+                          y2: selectedElement.y1 + dy * ratio
+                        });
+                      }}
+                      className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-dark"
+                      min="1"
+                      step="1"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-drawhard-hover block mb-1 text-left">Épaisseur</label>
+                    <input 
+                      type="number"
+                      value={Math.round(selectedElement.thickness || 3)}
+                      onChange={(e) => {
+                        const newThickness = parseInt(e.target.value) || 3;
+                        onUpdateElement(selectedElement.id, { thickness: Math.max(1, newThickness) });
+                      }}
+                      className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-dark"
+                      min="1"
+                      step="1"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-xs text-drawhard-hover block mb-1 text-left">Larg. dent</label>
+                    <input 
+                      type="number"
+                      value={selectedElement.toothWidth || 10}
+                      onChange={(e) => {
+                        const newToothWidth = parseFloat(e.target.value) || 10;
+                        onUpdateElement(selectedElement.id, { toothWidth: Math.max(1, newToothWidth) });
+                      }}
+                      className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-dark"
+                      min="1"
+                      step="1"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-drawhard-hover block mb-1 text-left">Larg. espace</label>
+                    <input 
+                      type="number"
+                      value={selectedElement.gapWidth || 10}
+                      onChange={(e) => {
+                        const newGapWidth = parseFloat(e.target.value) || 10;
+                        onUpdateElement(selectedElement.id, { gapWidth: Math.max(1, newGapWidth) });
+                      }}
+                      className="w-full bg-drawhard-beige border border-drawhard-dark px-2 py-1 text-sm font-mono text-center text-drawhard-dark focus:outline-none focus:border-drawhard-dark"
+                      min="1"
+                      step="1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-drawhard-hover block mb-2 text-left">Type de crénelage</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => onUpdateElement(selectedElement.id, { startWith: 'tooth' })}
+                      className={`flex-1 px-3 py-2 text-xs font-medium transition-colors border border-drawhard-dark ${
+                        (selectedElement.startWith || 'tooth') === 'tooth'
+                          ? 'bg-drawhard-accent text-white'
+                          : 'bg-drawhard-beige text-drawhard-dark hover:bg-drawhard-hover hover:text-white'
+                      }`}
+                    >
+                      Mâle
+                    </button>
+                    <button
+                      onClick={() => onUpdateElement(selectedElement.id, { startWith: 'gap' })}
+                      className={`flex-1 px-3 py-2 text-xs font-medium transition-colors border border-drawhard-dark ${
+                        selectedElement.startWith === 'gap'
+                          ? 'bg-drawhard-accent text-white'
+                          : 'bg-drawhard-beige text-drawhard-dark hover:bg-drawhard-hover hover:text-white'
+                      }`}
+                    >
+                      Femelle
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
             

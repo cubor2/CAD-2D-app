@@ -180,11 +180,17 @@ export const findNearestEdgePoint = (mousePoint, element, viewport, tolerance, p
  * Obtient le curseur approprié pour un point de contrôle
  * @param {String} label - Label du point de contrôle
  * @param {String} mode - 'edit' ou 'select'
+ * @param {String} elementType - Type de l'élément (optionnel)
  * @returns {String} Nom du curseur CSS
  */
-export const getCursorForControlPoint = (label, mode) => {
+export const getCursorForControlPoint = (label, mode, elementType = null) => {
   if (mode !== 'edit') {
     return 'default';
+  }
+  
+  // Curseur spécial pour le point du milieu d'une ligne (indique qu'on va créer un arc)
+  if (label === 'middle' && elementType === 'line') {
+    return 'crosshair';
   }
   
   switch (label) {

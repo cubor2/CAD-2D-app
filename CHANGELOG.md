@@ -1,5 +1,70 @@
 # Changelog - CAD 2D Editor pour Découpe Laser
 
+## Version 1.1.0 - 24 Octobre 2025
+
+### 🎉 Nouvelle fonctionnalité majeure : Outil Créneaux (Finger Joints)
+
+#### Nouvel outil
+- **Outil Créneaux (F)** : Création d'assemblages par emboîtement pour la découpe laser
+  - Raccourci clavier : `F`
+  - Icône personnalisée explicite dans la toolbar
+  - Positionné après l'outil Texte pour un accès facile
+
+#### Paramètres configurables
+- **Longueur totale** : Éditable en temps réel
+- **Épaisseur matériau** : Profondeur des dents (valeurs entières uniquement)
+- **Largeur dent** : Largeur de chaque dent
+- **Largeur espace** : Largeur de chaque espace entre les dents
+- **Type de crénelage** : Mâle (dents vers le haut) ou Femelle (dents vers le bas)
+- **Ajustement automatique** : Les créneaux sont toujours symétriques
+
+#### Édition avancée
+- **Points de contrôle** :
+  - Points de départ/fin (noirs) sur la ligne de base pour un snap précis
+  - Point central (bleu) pour modifier l'épaisseur perpendiculairement
+- **Curseurs contextuels** : 
+  - Curseur "grab" pour le point central des créneaux
+  - Facilite la compréhension de l'action à effectuer
+- **Détection de clic améliorée** : Utilise le contour complet du crénelage (pas seulement la ligne de base)
+
+#### Transformations supportées
+- **Rotation** : 45° via le bouton
+- **Symétrie horizontale** : Inverse la direction
+- **Symétrie verticale** : Inverse le type (mâle ↔ femelle)
+- **Redimensionnement** : Modification de la longueur totale via le panneau
+
+#### Qualité et sécurité
+- **Géométrie optimisée** : Les créneaux mâles commencent et finissent toujours par une ligne horizontale
+- **Prévention des erreurs** : Impossible de créer des éléments invisibles (clic simple sans drag)
+- **Export laser** : Paths optimisés pour découpe précise
+
+### 🔧 Améliorations générales
+
+#### Interface utilisateur
+- **Curseurs contextuels** : Curseur "crosshair" (croix) pour le point central des lignes en mode édition
+  - Indique visuellement qu'un arc va être créé
+  - Évite les déformations accidentelles
+- **Panneau de propriétés** : Layout optimisé pour les créneaux (paramètres groupés sur 2 lignes)
+- **Séparateurs** : Espacement amélioré entre les blocs de propriétés
+
+#### Système de snap
+- **Points de référence** : Les créneaux utilisent toujours la ligne de base comme référence
+- **Compatibilité** : Snap précis avec tous les autres éléments
+
+### 📚 Documentation
+- **Guide complet** : [docs/FINGER_JOINT_TOOL.md](docs/FINGER_JOINT_TOOL.md)
+  - Vue d'ensemble de l'outil
+  - Paramètres détaillés
+  - Cas d'usage et recommandations
+  - Architecture technique
+
+### 🏗️ Changements techniques
+- **Nouveau fichier** : `src/utils/fingerJoint.js` - Algorithme de génération
+- **Fonction utilitaire** : `pointToPathDistance` pour détection de clic sur paths complexes
+- **Extension** : Support du type `fingerJoint` dans tous les systèmes (drawing, selection, transformation)
+
+---
+
 ## Version 1.0.0 - 17 Octobre 2025
 
 ### 🎉 Fonctionnalités principales

@@ -43,6 +43,17 @@ export const pointToLineDistance = (point, lineStart, lineEnd) => {
   return result.distance;
 };
 
+export const pointToPathDistance = (point, pathPoints) => {
+  let minDist = Infinity;
+  
+  for (let i = 0; i < pathPoints.length - 1; i++) {
+    const dist = pointToLineDistance(point, pathPoints[i], pathPoints[i + 1]);
+    minDist = Math.min(minDist, dist);
+  }
+  
+  return minDist;
+};
+
 export const getElementSnapPoints = (el) => {
   const points = [];
   

@@ -1,5 +1,6 @@
 import { GRID_SIZE, MAJOR_GRID, RULER_SIZE } from '../constants';
 import { worldToScreen } from './transforms';
+import { generateFingerJointPoints } from './fingerJoint';
 
 export const drawGrid = (ctx, canvas, viewport, darkMode, showRulers) => {
   const rect = canvas.getBoundingClientRect();
@@ -271,6 +272,69 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
 
     if (showDimensions) {
       const length = Math.sqrt((el.x2 - el.x1) ** 2 + (el.y2 - el.y1) ** 2);
+      const midX = (start.x + end.x) / 2;
+      const midY = (start.y + end.y) / 2;
+      ctx.fillStyle = '#1F1F1F';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(`${Math.round(length)}mm`, midX + 5, midY - 5);
+    }
+    
+    if (isSelected) {
+      const controlPoints = [
+        worldToScreen(el.x1, el.y1, canvas, viewport),
+        worldToScreen((el.x1 + el.x2) / 2, (el.y1 + el.y2) / 2, canvas, viewport),
+        worldToScreen(el.x2, el.y2, canvas, viewport)
+      ];
+      
+      ctx.save();
+      controlPoints.forEach((pt, idx) => {
+        if (idx === 1) {
+          ctx.fillStyle = tool === 'edit' ? '#00aaff' : '#2B2B2B';
+        } else {
+          ctx.fillStyle = '#2B2B2B';
+        }
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+  } else if (el.type === 'fingerJoint') {
+    const points = generateFingerJointPoints(
+      el.x1, el.y1, el.x2, el.y2,
+      el.thickness || 3,
+      el.toothWidth || 10,
+      el.gapWidth || 10,
+      el.startWith || 'tooth',
+      el.autoAdjust !== false
+    );
+    
+    if (isFlashing) {
+      ctx.strokeStyle = flashColor;
+      ctx.lineWidth = 4;
+    } else {
+      ctx.strokeStyle = isSelected ? selectionColor : (el.stroke || '#2B2B2B');
+      ctx.lineWidth = isSelected ? 2.5 : (el.strokeWidth || 1.5);
+    }
+    
+    ctx.beginPath();
+    points.forEach((pt, idx) => {
+      const screenPt = worldToScreen(pt.x, pt.y, canvas, viewport);
+      if (idx === 0) {
+        ctx.moveTo(screenPt.x, screenPt.y);
+      } else {
+        ctx.lineTo(screenPt.x, screenPt.y);
+      }
+    });
+    ctx.stroke();
+    
+    if (showDimensions) {
+      const length = Math.sqrt((el.x2 - el.x1) ** 2 + (el.y2 - el.y1) ** 2);
+      const start = worldToScreen(el.x1, el.y1, canvas, viewport);
+      const end = worldToScreen(el.x2, el.y2, canvas, viewport);
       const midX = (start.x + end.x) / 2;
       const midY = (start.y + end.y) / 2;
       ctx.fillStyle = '#1F1F1F';

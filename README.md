@@ -48,6 +48,7 @@
 | **Arc** | `A` | Dessiner des arcs et portions d'ellipse |
 | **Courbe de Bézier** | `B` | Dessiner des courbes quadratiques |
 | **Texte** | `T` | Ajouter du texte (non découpable) |
+| **Créneaux** | `F` | Créer des finger joints pour assemblage |
 
 ### 🎯 Manipulation
 
@@ -138,6 +139,15 @@ npm run build
 - Relâcher pour définir l'angle de fin
 - Largeur/hauteur éditables pour faire des ellipses partielles
 
+**Créneaux (Finger joints)** :
+- Sélectionner l'outil Créneaux (F)
+- Cliquer pour le point de départ
+- Cliquer pour le point d'arrivée
+- Le crénelage est créé automatiquement
+- Paramètres éditables : épaisseur, largeur dent/espace, type (mâle/femelle)
+- Mode édition : point central modifie l'épaisseur perpendiculairement
+- Documentation complète : [docs/FINGER_JOINT_TOOL.md](docs/FINGER_JOINT_TOOL.md)
+
 ### 3. Sélectionner et modifier
 
 **Sélection** :
@@ -192,6 +202,7 @@ npm run build
 | `A` | Outil Arc |
 | `B` | Outil Courbe de Bézier |
 | `T` | Outil Texte |
+| `F` | Outil Créneaux (Finger joints) |
 
 ### Édition
 | Raccourci | Action |
@@ -293,6 +304,7 @@ src/
 ├── utils/              # Utilitaires
 │   ├── drawing.js      # Fonctions de dessin
 │   ├── geometry.js     # Calculs géométriques
+│   ├── fingerJoint.js  # Génération créneaux
 │   ├── snap.js         # Système de snap
 │   └── laserExporter.js # Export laser
 ├── constants/          # Constantes
@@ -318,7 +330,7 @@ src/
 ```javascript
 {
   id: string,
-  type: 'line' | 'rectangle' | 'circle' | 'arc' | 'curve' | 'text',
+  type: 'line' | 'rectangle' | 'circle' | 'arc' | 'curve' | 'text' | 'fingerJoint',
   stroke: string,
   strokeWidth: number,
   // ... propriétés spécifiques

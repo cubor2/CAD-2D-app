@@ -12,7 +12,8 @@ import { useElements } from './hooks/useElements';
 import { useSelection } from './hooks/useSelection';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { screenToWorld, worldToScreen } from './utils/transforms';
-import { snapToGridFn, pointToLineDistance, isAngleBetween } from './utils/geometry';
+import { snapToGridFn, pointToLineDistance, pointToPathDistance, isAngleBetween } from './utils/geometry';
+import { generateFingerJointPoints } from './utils/fingerJoint';
 import { findSnapPoints, findGuideSnapPosition, computeSnap } from './utils/snap';
 import { RULER_SIZE, GRID_SIZE, GUIDE_SNAP_DISTANCE } from './constants';
 import { importSVG } from './utils/svgImporter';
@@ -261,7 +262,7 @@ const CADEditor = () => {
         const newId = getNextId();
         idMapping[el.id] = newId;
         const newEl = { ...el, id: newId };
-        if (el.type === 'line') {
+        if (el.type === 'line' || el.type === 'fingerJoint') {
           newEl.x1 += offset;
           newEl.y1 += offset;
           newEl.x2 += offset;
@@ -425,7 +426,7 @@ const CADEditor = () => {
     updateElements(elements.map(el => {
       if (!selectedIds.includes(el.id)) return el;
       
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
       } else if (el.type === 'curve') {
         return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy, cpx: el.cpx + dx, cpy: el.cpy + dy };
@@ -449,7 +450,7 @@ const CADEditor = () => {
     let centerX = 0, centerY = 0;
     
     selectedElements.forEach(el => {
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         centerX += (el.x1 + el.x2) / 2;
         centerY += (el.y1 + el.y2) / 2;
       } else if (el.type === 'rectangle') {
@@ -480,7 +481,7 @@ const CADEditor = () => {
     updateElements(elements.map(el => {
       if (!selectedIds.includes(el.id)) return el;
       
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         const dx1 = el.x1 - centerX;
         const dy1 = el.y1 - centerY;
         const dx2 = el.x2 - centerX;
@@ -559,7 +560,7 @@ const CADEditor = () => {
     let centerX = 0;
     
     selectedElements.forEach(el => {
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         centerX += (el.x1 + el.x2) / 2;
       } else if (el.type === 'rectangle') {
         centerX += el.x + el.width / 2;
@@ -579,7 +580,7 @@ const CADEditor = () => {
     updateElements(elements.map(el => {
       if (!selectedIds.includes(el.id)) return el;
       
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         const x1 = Math.round((2 * centerX - el.x1) / GRID_SIZE) * GRID_SIZE;
         const x2 = Math.round((2 * centerX - el.x2) / GRID_SIZE) * GRID_SIZE;
         return {
@@ -629,7 +630,7 @@ const CADEditor = () => {
     let centerY = 0;
     
     selectedElements.forEach(el => {
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         centerY += (el.y1 + el.y2) / 2;
       } else if (el.type === 'rectangle') {
         centerY += el.y + el.height / 2;
@@ -649,7 +650,7 @@ const CADEditor = () => {
     updateElements(elements.map(el => {
       if (!selectedIds.includes(el.id)) return el;
       
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         const y1 = Math.round((2 * centerY - el.y1) / GRID_SIZE) * GRID_SIZE;
         const y2 = Math.round((2 * centerY - el.y2) / GRID_SIZE) * GRID_SIZE;
         return {
@@ -698,7 +699,7 @@ const CADEditor = () => {
     updateElements(elements.map(el => {
       if (!selectedIds.includes(el.id)) return el;
       
-      if (el.type === 'line') {
+      if (el.type === 'line' || el.type === 'fingerJoint') {
         const dx = el.x2 - el.x1;
         const dy = el.y2 - el.y1;
         const currentLength = Math.sqrt(dx * dx + dy * dy);
@@ -1401,6 +1402,17 @@ const CADEditor = () => {
         if (el.type === 'line') {
           const dist = pointToLineDistance(snapped, { x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 });
           return dist < 5 / viewport.zoom;
+        } else if (el.type === 'fingerJoint') {
+          const pathPoints = generateFingerJointPoints(
+            el.x1, el.y1, el.x2, el.y2,
+            el.thickness || 3,
+            el.toothWidth || 10,
+            el.gapWidth || 10,
+            el.startWith || 'tooth',
+            el.autoAdjust !== false
+          );
+          const dist = pointToPathDistance(snapped, pathPoints);
+          return dist < 5 / viewport.zoom;
         } else if (el.type === 'curve') {
           if (typeof el.cpx === 'undefined' || typeof el.cpy === 'undefined') return false;
           let minDist = Infinity;
@@ -1547,8 +1559,10 @@ const CADEditor = () => {
               return isAngleBetween(clickAngle, el.startAngle, el.endAngle);
             }
             return false;
-          } else if (el.type === 'line' || el.type === 'curve') {
-            return pointToLineDistance({ x: snapped.x, y: snapped.y }, el) < CLICK_DISTANCE;
+          } else if (el.type === 'line' || el.type === 'fingerJoint') {
+            return pointToLineDistance(snapped, { x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 }) < CLICK_DISTANCE;
+          } else if (el.type === 'curve') {
+            return pointToLineDistance(snapped, { x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 }) < CLICK_DISTANCE;
           }
         }
         return false;
@@ -1653,7 +1667,9 @@ const CADEditor = () => {
               return;
             }
           }
-        } else if (el.type === 'line') {
+        } else if (el.type === 'line' || el.type === 'fingerJoint') {
+          // Les coordonnées x1,y1 et x2,y2 sont toujours sur la ligne de base
+          // Pas besoin d'ajustement, même pour les créneaux mâles
           controlPoints = [
             { x: el.x1, y: el.y1, label: 'start' },
             { x: (el.x1 + el.x2) / 2, y: (el.y1 + el.y2) / 2, label: 'middle' },
@@ -1808,6 +1824,7 @@ const CADEditor = () => {
 
       // Vérifier si on clique à l'intérieur d'un rectangle ou texte déjà sélectionné (pour le déplacer)
       // SAUF pour les textes en mode édition (car on veut éditer le texte, pas le déplacer)
+      // NOTE: Les lignes et courbes se déplacent uniquement via leurs points de contrôle
       for (const el of elements.filter(e => selectedIds.includes(e.id) && (e.type === 'rectangle' || (e.type === 'text' && tool !== 'edit')))) {
         const isInsideElement = snapped.x >= el.x && snapped.x <= el.x + el.width &&
                                 snapped.y >= el.y && snapped.y <= el.y + el.height;
@@ -1825,7 +1842,8 @@ const CADEditor = () => {
         if (selectedIds.includes(el.id)) continue;
         
         let controlPoints = [];
-        if (el.type === 'line') {
+        if (el.type === 'line' || el.type === 'fingerJoint') {
+          // Les coordonnées x1,y1 et x2,y2 sont toujours sur la ligne de base
           controlPoints = [
             { x: el.x1, y: el.y1, label: 'start' },
             { x: (el.x1 + el.x2) / 2, y: (el.y1 + el.y2) / 2, label: 'middle' },
@@ -1878,9 +1896,28 @@ const CADEditor = () => {
         }
       }
 
-      const clicked = elements.find(el => {
+      // Rechercher en ordre inverse pour prioriser les éléments du dessus
+      // Exclure les éléments déjà sélectionnés pour éviter de les "re-cliquer" inutilement
+      const clicked = [...elements].reverse().find(el => {
+        // Si l'élément est déjà sélectionné, on ne le détecte pas ici
+        // (il doit être édité via ses points de contrôle)
+        if (selectedIds.includes(el.id)) {
+          return false;
+        }
+        
         if (el.type === 'line') {
           const dist = pointToLineDistance(snapped, { x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 });
+          return dist < 5 / viewport.zoom;
+        } else if (el.type === 'fingerJoint') {
+          const pathPoints = generateFingerJointPoints(
+            el.x1, el.y1, el.x2, el.y2,
+            el.thickness || 3,
+            el.toothWidth || 10,
+            el.gapWidth || 10,
+            el.startWith || 'tooth',
+            el.autoAdjust !== false
+          );
+          const dist = pointToPathDistance(snapped, pathPoints);
           return dist < 5 / viewport.zoom;
         } else if (el.type === 'curve') {
           if (typeof el.cpx === 'undefined' || typeof el.cpy === 'undefined') return false;
@@ -1929,7 +1966,8 @@ const CADEditor = () => {
       if (clicked) {
         if (e.shiftKey) {
           toggleSelection(clicked.id);
-        } else if (!selectedIds.includes(clicked.id)) {
+        } else {
+          // Toujours permettre de changer la sélection, même si l'élément est déjà sélectionné
           setSelectedIds([clicked.id]);
           if (clicked.type === 'text') {
             if (editingTextId && editingTextId !== clicked.id) {
@@ -1977,6 +2015,29 @@ const CADEditor = () => {
         fill: '#000000',
         textAlign: 'center',
         verticalAlign: 'middle'
+      });
+      setSnapPoint(null);
+      return;
+    }
+
+    if (tool === 'fingerJoint') {
+      setIsDrawing(true);
+      setStartPoint(snapped);
+      setDrawOrigin(snapped);
+      setCurrentElement({
+        id: getNextId(),
+        type: 'fingerJoint',
+        x1: snapped.x,
+        y1: snapped.y,
+        x2: snapped.x,
+        y2: snapped.y,
+        thickness: 3,
+        toothWidth: 10,
+        gapWidth: 10,
+        startWith: 'tooth',
+        autoAdjust: true,
+        stroke: '#2B2B2B',
+        strokeWidth: 1.5
       });
       setSnapPoint(null);
       return;
@@ -2051,7 +2112,7 @@ const CADEditor = () => {
               priority: 200
             });
             
-            setHoverCursor(getCursorForControlPoint(nearest.point.label, tool));
+            setHoverCursor(getCursorForControlPoint(nearest.point.label, tool, el.type));
             break;
           }
         }
@@ -2286,7 +2347,7 @@ const CADEditor = () => {
             ));
           }
         }
-      } else if (el.type === 'line') {
+      } else if (el.type === 'line' || el.type === 'fingerJoint') {
         updateSnapPointForDrag(snapped.snapInfo);
         
         if (editingPoint.pointType === 'start') {
@@ -2323,7 +2384,7 @@ const CADEditor = () => {
           setElements(prev => prev.map(item =>
             item.id === el.id ? { ...item, x2: newX, y2: newY } : item
           ));
-        } else if (editingPoint.pointType === 'middle') {
+        } else if (editingPoint.pointType === 'middle' && el.type === 'line') {
           setElements(prev => prev.map(item => {
             if (item.id === el.id) {
               return {
@@ -2346,6 +2407,34 @@ const CADEditor = () => {
             ...prev,
             pointType: 'control'
           }));
+        } else if (editingPoint.pointType === 'middle' && el.type === 'fingerJoint') {
+          // Pour les créneaux, le point du milieu modifie l'épaisseur
+          // Calculer la distance perpendiculaire entre le point et la ligne de base
+          const dx_line = el.x2 - el.x1;
+          const dy_line = el.y2 - el.y1;
+          const lineLength = Math.sqrt(dx_line * dx_line + dy_line * dy_line);
+          
+          if (lineLength > 0) {
+            // Vecteur unitaire de la ligne
+            const ux = dx_line / lineLength;
+            const uy = dy_line / lineLength;
+            
+            // Vecteur du milieu de la ligne au point cliqué
+            const midX = (el.x1 + el.x2) / 2;
+            const midY = (el.y1 + el.y2) / 2;
+            const toPointX = snapped.x - midX;
+            const toPointY = snapped.y - midY;
+            
+            // Distance perpendiculaire (produit scalaire avec le vecteur perpendiculaire)
+            const perpDist = Math.abs(-uy * toPointX + ux * toPointY);
+            
+            // Nouvelle épaisseur (minimum 1mm)
+            const newThickness = Math.max(1, Math.round(perpDist));
+            
+            setElements(prev => prev.map(item =>
+              item.id === el.id ? { ...item, thickness: newThickness } : item
+            ));
+          }
         }
       } else if (el.type === 'curve') {
         updateSnapPointForDrag(snapped.snapInfo);
@@ -2473,7 +2562,7 @@ const CADEditor = () => {
         const originalEl = dragOriginalElements.find(orig => orig.id === el.id);
         if (!originalEl) return el;
         
-        if (el.type === 'line') {
+        if (el.type === 'line' || el.type === 'fingerJoint') {
           return { ...el, x1: originalEl.x1 + dx, y1: originalEl.y1 + dy, x2: originalEl.x2 + dx, y2: originalEl.y2 + dy };
         } else if (el.type === 'curve') {
           return { ...el, x1: originalEl.x1 + dx, y1: originalEl.y1 + dy, x2: originalEl.x2 + dx, y2: originalEl.y2 + dy, cpx: originalEl.cpx + dx, cpy: originalEl.cpy + dy };
@@ -2501,7 +2590,7 @@ const CADEditor = () => {
 
     if (isDrawing && startPoint) {
       const snapped = applySnap(point, [], true, e.shiftKey);
-      if (tool === 'line') {
+      if (tool === 'line' || tool === 'fingerJoint') {
         let endX = snapped.x;
         let endY = snapped.y;
         
@@ -2626,7 +2715,7 @@ const CADEditor = () => {
       
       const selected = elements.filter(el => {
         const corners = [];
-        if (el.type === 'line') {
+        if (el.type === 'line' || el.type === 'fingerJoint') {
           corners.push(worldToScreenWrapper(el.x1, el.y1), worldToScreenWrapper(el.x2, el.y2));
         } else if (el.type === 'curve') {
           corners.push(
@@ -2661,6 +2750,24 @@ const CADEditor = () => {
     if (isDrawing && currentElement) {
       let elementToAdd = currentElement;
       
+      // Vérification de taille minimale pour éviter les éléments invisibles
+      const minSize = 2; // 2mm minimum
+      
+      if (currentElement.type === 'line' || currentElement.type === 'fingerJoint') {
+        const length = Math.sqrt(
+          (currentElement.x2 - currentElement.x1) ** 2 + 
+          (currentElement.y2 - currentElement.y1) ** 2
+        );
+        if (length < minSize) {
+          setCurrentElement(null);
+          setIsDrawing(false);
+          setStartPoint(null);
+          setDrawOrigin(null);
+          setSnapPoint(null);
+          return;
+        }
+      }
+      
       if (currentElement.type === 'text' || currentElement.type === 'rectangle') {
         if (currentElement.width < 0) {
           elementToAdd = {
@@ -2678,9 +2785,32 @@ const CADEditor = () => {
         }
       }
       
-      if (elementToAdd.type === 'text') {
-        const minSize = 10 / viewport.zoom;
+      if (elementToAdd.type === 'rectangle') {
         if (elementToAdd.width < minSize || elementToAdd.height < minSize) {
+          setCurrentElement(null);
+          setIsDrawing(false);
+          setStartPoint(null);
+          setDrawOrigin(null);
+          setSnapPoint(null);
+          return;
+        }
+      }
+      
+      if (elementToAdd.type === 'circle') {
+        const radius = elementToAdd.radius || elementToAdd.radiusX || 0;
+        if (radius * 2 < minSize) {
+          setCurrentElement(null);
+          setIsDrawing(false);
+          setStartPoint(null);
+          setDrawOrigin(null);
+          setSnapPoint(null);
+          return;
+        }
+      }
+      
+      if (elementToAdd.type === 'text') {
+        const minSizeText = 10 / viewport.zoom;
+        if (elementToAdd.width < minSizeText || elementToAdd.height < minSizeText) {
           setCurrentElement(null);
           setIsDrawing(false);
           setStartPoint(null);
@@ -2700,8 +2830,10 @@ const CADEditor = () => {
       const newElements = [...elements, elementToAdd];
       updateElements(newElements);
       
+      // Sélectionner automatiquement l'élément créé
+      setSelectedIds([elementToAdd.id]);
+      
       if (elementToAdd.type === 'text') {
-        setSelectedIds([elementToAdd.id]);
         setEditingTextId(elementToAdd.id);
         setTextCursorPosition(elementToAdd.text.length);
         setTextSelectionStart(0);
