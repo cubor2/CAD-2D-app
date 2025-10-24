@@ -12,6 +12,7 @@ import { useElements } from './hooks/useElements';
 import { useSelection } from './hooks/useSelection';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useFileOperations } from './hooks/useFileOperations';
+import { useClipboard } from './hooks/useClipboard';
 import { screenToWorld, worldToScreen } from './utils/transforms';
 import { snapToGridFn, pointToLineDistance, pointToPathDistance, isAngleBetween } from './utils/geometry';
 import { generateFingerJointPoints } from './utils/fingerJoint';
@@ -131,6 +132,26 @@ const CADEditor = () => {
     setWorkArea,
     getNextId,
     setShowLaserExportModal
+  });
+
+  // Hook pour les opérations de clipboard (Phase 2.2 du refactoring)
+  const {
+    handleCopy,
+    handleCut,
+    handlePaste
+  } = useClipboard({
+    selectedIds,
+    elements,
+    groups,
+    clipboard,
+    pasteCount,
+    setClipboard,
+    setPasteCount,
+    deleteElements,
+    setSelectedIds,
+    updateElements,
+    setGroups,
+    getNextId
   });
 
   const getCanvasRef = () => {
@@ -255,85 +276,7 @@ const CADEditor = () => {
     }
   }, []);
 
-  const handleCopy = useCallback(() => {
-    if (selectedIds.length > 0) {
-      const selectedElements = elements.filter(el => selectedIds.includes(el.id));
-      const selectedGroups = groups.filter(group => 
-        group.elementIds.some(id => selectedIds.includes(id))
-      );
-      setClipboard({ elements: selectedElements, groups: selectedGroups });
-      setPasteCount(0);
-    }
-  }, [selectedIds, elements, groups]);
-
-  const handleCut = useCallback(() => {
-    if (selectedIds.length > 0) {
-      const selectedElements = elements.filter(el => selectedIds.includes(el.id));
-      const selectedGroups = groups.filter(group => 
-        group.elementIds.some(id => selectedIds.includes(id))
-      );
-      setClipboard({ elements: selectedElements, groups: selectedGroups });
-      setPasteCount(0);
-      deleteElements(selectedIds);
-      setSelectedIds([]);
-    }
-  }, [selectedIds, elements, groups, deleteElements, setSelectedIds]);
-
-  const handlePaste = useCallback((inPlace) => {
-    if (clipboard.elements.length > 0) {
-      const offset = inPlace ? 0 : (pasteCount + 1) * 10;
-      
-      const idMapping = {};
-      const newElements = clipboard.elements.map(el => {
-        const newId = getNextId();
-        idMapping[el.id] = newId;
-        const newEl = { ...el, id: newId };
-        if (el.type === 'line' || el.type === 'fingerJoint') {
-          newEl.x1 += offset;
-          newEl.y1 += offset;
-          newEl.x2 += offset;
-          newEl.y2 += offset;
-        } else if (el.type === 'curve') {
-          newEl.x1 += offset;
-          newEl.y1 += offset;
-          newEl.x2 += offset;
-          newEl.y2 += offset;
-          newEl.cpx += offset;
-          newEl.cpy += offset;
-        } else if (el.type === 'rectangle') {
-          newEl.x += offset;
-          newEl.y += offset;
-        } else if (el.type === 'circle') {
-          newEl.cx += offset;
-          newEl.cy += offset;
-        } else if (el.type === 'arc') {
-          newEl.cx += offset;
-          newEl.cy += offset;
-        } else if (el.type === 'text') {
-          newEl.x += offset;
-          newEl.y += offset;
-        }
-        return newEl;
-      });
-      
-      const updatedElements = [...elements, ...newElements];
-      updateElements(updatedElements);
-      setSelectedIds(newElements.map(el => el.id));
-      
-      const newGroups = clipboard.groups.map(group => ({
-        id: Date.now() + Math.random(),
-        elementIds: group.elementIds.map(oldId => idMapping[oldId]).filter(Boolean)
-      })).filter(group => group.elementIds.length >= 2);
-      
-      if (newGroups.length > 0) {
-        setGroups(prev => [...prev, ...newGroups]);
-      }
-      
-      if (!inPlace) {
-        setPasteCount(prev => prev + 1);
-      }
-    }
-  }, [clipboard, pasteCount, elements, getNextId, updateElements, setSelectedIds, setGroups]);
+  // Les fonctions de clipboard sont maintenant dans useClipboard hook ✅
 
   const handleDelete = useCallback(() => {
     if (tool === 'edit' && selectedEdge) {
@@ -2587,7 +2530,7 @@ const CADEditor = () => {
       updateElements(newElements);
       
       // Sélectionner automatiquement l'élément créé
-      setSelectedIds([elementToAdd.id]);
+        setSelectedIds([elementToAdd.id]);
       
       if (elementToAdd.type === 'text') {
         setEditingTextId(elementToAdd.id);
