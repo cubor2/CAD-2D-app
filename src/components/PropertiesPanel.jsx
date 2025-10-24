@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bold, Italic, RotateCw, FlipHorizontal, FlipVertical, Lock, Unlock } from 'lucide-react';
+import packageJson from '../../package.json';
 
 const WorkAreaSection = ({ workArea, onWorkAreaChange, workAreaWidthInput, setWorkAreaWidthInput, workAreaHeightInput, setWorkAreaHeightInput }) => (
     <div className="pb-3">
@@ -101,7 +102,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, on
               animation: showAnimation ? 'versionSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both' : 'none'
             }}
           >
-            Version 1.0
+            Version {packageJson.version}
           </p>
       </div>
       <div className="flex-1">
@@ -281,7 +282,7 @@ const PropertiesPanel = React.memo(({ selectedIds, elements, onUpdateElement, on
             animation: showAnimation ? 'versionSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both' : 'none'
           }}
         >
-          Version 1.0
+          Version {packageJson.version}
         </p>
       </div>
       <div className="flex-1">

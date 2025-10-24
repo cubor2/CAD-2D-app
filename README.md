@@ -2,7 +2,7 @@
 
 **Éditeur CAD 2D professionnel optimisé pour la découpe laser**
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
 ![React](https://img.shields.io/badge/React-18-61dafb)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -17,6 +17,7 @@
 - [Raccourcis clavier](#%EF%B8%8F-raccourcis-clavier)
 - [Export pour découpe laser](#-export-pour-découpe-laser)
 - [Architecture technique](#-architecture-technique)
+- [Versioning](#-versioning)
 - [Contribuer](#-contribuer)
 
 ---
@@ -347,6 +348,36 @@ src/
 ```
 
 **History** : Stack undo/redo (max 50)
+
+---
+
+## 🔖 Versioning
+
+Le projet utilise **Semantic Versioning** (`MAJOR.MINOR.PATCH`).
+
+### Version actuelle : **0.1.0**
+
+### Scripts npm disponibles
+
+```bash
+# Corrections de bugs (0.1.0 → 0.1.1)
+npm run version:patch
+
+# Nouvelles fonctionnalités (0.1.0 → 0.2.0)
+npm run version:minor
+
+# Changements majeurs (0.1.0 → 1.0.0)
+npm run version:major
+```
+
+Ces commandes créent automatiquement un commit et un tag Git. Pour plus de détails, voir [`VERSIONING.md`](./VERSIONING.md).
+
+### Workflow recommandé
+
+1. Faire vos modifications et les commiter
+2. Incrémenter la version : `npm run version:patch`
+3. Mettre à jour `CHANGELOG.md`
+4. Push avec les tags : `git push origin <branch> --follow-tags`
 
 ---
 

@@ -1,6 +1,56 @@
 # Changelog - CAD 2D Editor pour Découpe Laser
 
-## Version 1.1.0 - 24 Octobre 2025
+## Version 0.1.0 - 24 Octobre 2025
+
+### 🏗️ Refactoring majeur : Architecture modulaire
+
+#### Phase 2.1 : Opérations de fichiers
+- **Nouveau hook** : `useFileOperations.js` (-245 lignes de `CADEditor.jsx`)
+  - Extraction de toutes les opérations de fichiers (New, Open, Import SVG, Save, Save As, Laser Export, Export)
+  - Code mieux organisé et plus maintenable
+
+#### Phase 2.2 : Opérations de clipboard
+- **Nouveau hook** : `useClipboard.js` (-57 lignes de `CADEditor.jsx`)
+  - Extraction des opérations Copy, Cut, Paste
+  - Gestion isolée du clipboard et des groupes
+
+#### Phase 2.3 : Transformations d'éléments
+- **Nouveau hook** : `useElementTransforms.js` (-410 lignes de `CADEditor.jsx`)
+  - Extraction de `handleRotate` (rotation 45°)
+  - Extraction de `handleFlipHorizontal` / `handleFlipVertical` (symétries)
+  - Extraction de `handleResizeElement` (redimensionnement)
+
+#### Résultat
+- **`CADEditor.jsx`** : Réduit de 2686 → 2284 lignes (**-402 lignes, -15%**)
+- **Maintenabilité** : Code modulaire, réutilisable et testable
+- **Performance** : Aucune régression, tous les hooks utilisent `useCallback` pour optimisation
+
+### 🔖 Système de versioning automatique
+
+#### Configuration
+- **Version actuelle** : 0.1.0 (Semantic Versioning)
+- **Scripts npm** :
+  - `npm run version:patch` : Corrections de bugs (0.1.0 → 0.1.1)
+  - `npm run version:minor` : Nouvelles fonctionnalités (0.1.0 → 0.2.0)
+  - `npm run version:major` : Changements majeurs (0.1.0 → 1.0.0)
+
+#### Fonctionnalités
+- **Affichage dynamique** : La version est importée depuis `package.json` dans toute l'app
+- **Tags Git automatiques** : Chaque incrément crée un commit et un tag `vX.Y.Z`
+- **Métadonnées** : Version incluse dans les fichiers `.json` et exports SVG
+- **Documentation** : Guide complet dans `VERSIONING.md`
+
+#### Avantages
+- ✅ Traçabilité complète des versions
+- ✅ Retour facile à une version antérieure via tags Git
+- ✅ Workflow standardisé pour les releases
+
+### 🐛 Corrections de bugs
+
+#### Curseur bloqué après création de texte
+- **Problème** : Après avoir créé un texte, le curseur restait en mode "text" même après avoir changé d'outil
+- **Solution** : `editingTextId` est maintenant réinitialisé automatiquement lors du changement d'outil
+- **Impact** : Les cercles de sélection redeviennent visibles correctement
 
 ### 🎉 Nouvelle fonctionnalité majeure : Outil Créneaux (Finger Joints)
 

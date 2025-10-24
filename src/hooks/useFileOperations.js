@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { importSVG } from '../utils/svgImporter';
 import { exportForLaser } from '../utils/laserExporter';
+import packageJson from '../../package.json';
 
 /**
  * Hook personnalisé pour gérer toutes les opérations de fichiers
@@ -109,7 +110,7 @@ export const useFileOperations = ({
       elements,
       guides,
       workArea,
-      version: '1.0'
+      version: packageJson.version
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -135,7 +136,7 @@ export const useFileOperations = ({
       elements,
       guides,
       workArea,
-      version: '1.0'
+      version: packageJson.version
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
