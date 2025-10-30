@@ -23,6 +23,7 @@ export const useFileOperations = ({
   setGuides,
   setWorkArea,
   getNextId,
+  syncNextId,
   setShowLaserExportModal
 }) => {
   
@@ -35,11 +36,12 @@ export const useFileOperations = ({
       if (!confirm) return;
     }
     updateElements([]);
+    syncNextId([]);
     setSelectedIds([]);
     clearSelection();
     setCurrentFileName('Sans titre');
     setHasUnsavedChanges(false);
-  }, [hasUnsavedChanges, updateElements, setSelectedIds, clearSelection, setCurrentFileName, setHasUnsavedChanges]);
+  }, [hasUnsavedChanges, updateElements, syncNextId, setSelectedIds, clearSelection, setCurrentFileName, setHasUnsavedChanges]);
 
   /**
    * Ouvrir un projet existant (.json)
@@ -56,7 +58,9 @@ export const useFileOperations = ({
       reader.onload = (event) => {
         try {
           const data = JSON.parse(event.target.result);
-          updateElements(data.elements || []);
+          const loadedElements = data.elements || [];
+          updateElements(loadedElements);
+          syncNextId(loadedElements);
           setGuides(data.guides || []);
           if (data.workArea) {
             setWorkArea(data.workArea);
@@ -70,7 +74,7 @@ export const useFileOperations = ({
       reader.readAsText(file);
     };
     input.click();
-  }, [updateElements, setGuides, setWorkArea, setCurrentFileName, setHasUnsavedChanges]);
+  }, [updateElements, syncNextId, setGuides, setWorkArea, setCurrentFileName, setHasUnsavedChanges]);
 
   /**
    * Importer un fichier SVG
@@ -91,6 +95,7 @@ export const useFileOperations = ({
         if (result.success) {
           const newElements = [...elements, ...result.elements];
           updateElements(newElements);
+          syncNextId(newElements);
           setHasUnsavedChanges(true);
           alert(`Import réussi ! ${result.elements.length} élément(s) importé(s).`);
         } else {
@@ -100,7 +105,7 @@ export const useFileOperations = ({
       reader.readAsText(file);
     };
     input.click();
-  }, [elements, getNextId, updateElements, workArea, setHasUnsavedChanges]);
+  }, [elements, getNextId, syncNextId, updateElements, workArea, setHasUnsavedChanges]);
 
   /**
    * Sauvegarder le projet actuel

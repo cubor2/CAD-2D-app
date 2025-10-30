@@ -91,7 +91,8 @@ const CADEditor = () => {
     updateElement,
     undo,
     redo,
-    getNextId
+    getNextId,
+    syncNextId
   } = useElements();
   
   const {
@@ -132,6 +133,7 @@ const CADEditor = () => {
     setGuides,
     setWorkArea,
     getNextId,
+    syncNextId,
     setShowLaserExportModal
   });
 

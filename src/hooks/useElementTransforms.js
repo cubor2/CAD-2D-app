@@ -294,34 +294,17 @@ export const useElementTransforms = (selectedIds, elements, updateElements, grid
         const currentLength = Math.sqrt(dx * dx + dy * dy);
         if (currentLength === 0) return el;
         
-        const isHorizontal = Math.abs(dx) > Math.abs(dy);
+        const newLength = Math.max(1, currentLength + delta);
+        const scale = newLength / currentLength;
         
-        if (isHorizontal) {
-          if (fromOppositeEnd) {
-            const newX1 = el.x1 - delta;
-            return { ...el, x1: newX1 };
-          } else {
-            const newX2 = el.x2 + delta;
-            return { ...el, x2: newX2 };
-          }
+        if (fromOppositeEnd) {
+          const newX1 = el.x2 - dx * scale;
+          const newY1 = el.y2 - dy * scale;
+          return { ...el, x1: newX1, y1: newY1 };
         } else {
-          if (fromOppositeEnd) {
-            if (el.y1 > el.y2) {
-              const newY1 = el.y1 + delta;
-              return { ...el, y1: newY1 };
-            } else {
-              const newY2 = el.y2 + delta;
-              return { ...el, y2: newY2 };
-            }
-          } else {
-            if (el.y1 < el.y2) {
-              const newY1 = el.y1 - delta;
-              return { ...el, y1: newY1 };
-            } else {
-              const newY2 = el.y2 - delta;
-              return { ...el, y2: newY2 };
-            }
-          }
+          const newX2 = el.x1 + dx * scale;
+          const newY2 = el.y1 + dy * scale;
+          return { ...el, x2: newX2, y2: newY2 };
         }
       } else if (el.type === 'rectangle') {
         const newWidth = Math.max(1, Math.abs(el.width) + delta);
@@ -378,66 +361,32 @@ export const useElementTransforms = (selectedIds, elements, updateElements, grid
         const currentLength = Math.sqrt(dx * dx + dy * dy);
         if (currentLength === 0) return el;
         
-        const isHorizontal = Math.abs(dx) > Math.abs(dy);
+        const newLength = Math.max(1, currentLength + delta);
+        const scale = newLength / currentLength;
         
         const cdx = el.cpx - el.x1;
         const cdy = el.cpy - el.y1;
         
-        if (isHorizontal) {
-          if (fromOppositeEnd) {
-            const newX1 = el.x1 - delta;
-            return {
-              ...el,
-              x1: newX1,
-              cpx: newX1 + cdx,
-            };
-          } else {
-            const newX2 = el.x2 + delta;
-            const scale = (newX2 - el.x1) / dx;
-            return {
-              ...el,
-              x2: newX2,
-              cpx: el.x1 + cdx * scale
-            };
-          }
+        if (fromOppositeEnd) {
+          const newX1 = el.x2 - dx * scale;
+          const newY1 = el.y2 - dy * scale;
+          return {
+            ...el,
+            x1: newX1,
+            y1: newY1,
+            cpx: newX1 + cdx * scale,
+            cpy: newY1 + cdy * scale
+          };
         } else {
-          if (fromOppositeEnd) {
-            if (el.y1 > el.y2) {
-              const newY1 = el.y1 + delta;
-              return {
-                ...el,
-                y1: newY1,
-                cpy: newY1 + cdy
-              };
-            } else {
-              const newDy = dy - delta;
-              const scale = newDy / dy;
-              const newY2 = el.y2 + delta;
-              return {
-                ...el,
-                y2: newY2,
-                cpy: el.y1 + cdy * scale
-              };
-            }
-          } else {
-            if (el.y1 < el.y2) {
-              const newY1 = el.y1 - delta;
-              return {
-                ...el,
-                y1: newY1,
-                cpy: newY1 + cdy
-              };
-            } else {
-              const newDy = dy + delta;
-              const scale = newDy / dy;
-              const newY2 = el.y2 - delta;
-              return {
-                ...el,
-                y2: newY2,
-                cpy: el.y1 + cdy * scale
-              };
-            }
-          }
+          const newX2 = el.x1 + dx * scale;
+          const newY2 = el.y1 + dy * scale;
+          return {
+            ...el,
+            x2: newX2,
+            y2: newY2,
+            cpx: el.x1 + cdx * scale,
+            cpy: el.y1 + cdy * scale
+          };
         }
       }
       

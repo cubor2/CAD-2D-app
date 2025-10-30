@@ -19,6 +19,13 @@ export const useElements = () => {
   };
 
   const addElement = (element) => {
+    const idExists = elements.some(el => el.id === nextIdRef.current);
+    if (idExists) {
+      console.warn(`⚠️ ID collision detected: ${nextIdRef.current}. Finding next available ID...`);
+      const maxId = elements.reduce((max, el) => Math.max(max, el.id), 0);
+      nextIdRef.current = maxId + 1;
+    }
+    
     const newElement = { ...element, id: nextIdRef.current++ };
     const newElements = [...elements, newElement];
     updateElements(newElements);
@@ -34,7 +41,7 @@ export const useElements = () => {
     const newElements = elements.map(el => 
       el.id === id ? { ...el, ...updates } : el
     );
-    setElements(newElements);
+    updateElements(newElements);
   };
 
   const undo = () => {
@@ -42,6 +49,10 @@ export const useElements = () => {
       const newIndex = historyIndex - 1;
       setHistoryIndex(newIndex);
       setElements(history[newIndex]);
+      
+      const maxId = history[newIndex].reduce((max, el) => Math.max(max, el.id), 0);
+      nextIdRef.current = maxId + 1;
+      
       return true;
     }
     return false;
@@ -52,12 +63,25 @@ export const useElements = () => {
       const newIndex = historyIndex + 1;
       setHistoryIndex(newIndex);
       setElements(history[newIndex]);
+      
+      const maxId = history[newIndex].reduce((max, el) => Math.max(max, el.id), 0);
+      nextIdRef.current = maxId + 1;
+      
       return true;
     }
     return false;
   };
 
   const getNextId = () => nextIdRef.current++;
+
+  const syncNextId = (elementsArray) => {
+    if (elementsArray.length === 0) {
+      nextIdRef.current = 1;
+    } else {
+      const maxId = elementsArray.reduce((max, el) => Math.max(max, el.id), 0);
+      nextIdRef.current = maxId + 1;
+    }
+  };
 
   return {
     elements,
@@ -70,7 +94,8 @@ export const useElements = () => {
     redo,
     history,
     historyIndex,
-    getNextId
+    getNextId,
+    syncNextId
   };
 };
 

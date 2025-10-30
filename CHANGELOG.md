@@ -1,5 +1,66 @@
 # Changelog - CAD 2D Editor pour Découpe Laser
 
+## Version 0.1.1 - 30 Octobre 2025 (En cours)
+
+### 🐛 CORRECTION CRITIQUE : Collision d'IDs d'éléments
+
+**Problème résolu :**
+- Les utilisateurs rencontraient un bug où modifier ou supprimer une ligne affectait d'autres lignes
+- Cause : Collision d'IDs due à une mauvaise gestion de `nextIdRef` lors des undo/redo
+
+**Corrections appliquées :**
+1. **`updateElement` corrigé** : Utilise maintenant `updateElements` pour sauvegarder dans l'historique
+2. **Synchronisation `nextIdRef`** : `undo()` et `redo()` synchronisent maintenant `nextIdRef` avec les IDs présents
+3. **Validation de sécurité** : `addElement` vérifie maintenant les collisions d'IDs et les corrige automatiquement
+4. **Nouvelle fonction `syncNextId`** : Permet de synchroniser `nextIdRef` lors du chargement de fichiers
+5. **Chargement de fichiers** : `handleNew`, `handleOpen`, et `handleImportSVG` synchronisent maintenant `nextIdRef`
+
+**Fichiers modifiés :**
+- `src/hooks/useElements.js` : Corrections majeures dans la gestion des IDs
+- `src/hooks/useFileOperations.js` : Synchronisation lors du chargement
+- `src/CADEditor.jsx` : Passage de `syncNextId` au hook
+
+**Impact :**
+- ✅ Aucune collision d'ID ne devrait plus se produire
+- ✅ Les modifications via le PropertiesPanel sont enregistrées dans l'historique
+- ✅ Undo/Redo fonctionne correctement sans créer de doublons
+- ✅ Le chargement de fichiers et l'import SVG synchronisent correctement les IDs
+
+**Documentation :**
+- `AUDIT_ID_DUPLICATION_BUG.md` : Analyse détaillée du problème
+- `BUGFIX_ID_COLLISION.md` : Documentation complète des corrections
+
+---
+
+### 🐛 CORRECTION : Redimensionnement aléatoire des lignes avec +/-
+
+**Problème résolu :**
+- Comportement aléatoire lors du redimensionnement de lignes avec les touches `+` et `-`
+- Parfois `+` agrandissait la ligne, parfois elle la réduisait
+- Le comportement dépendait de la direction dans laquelle la ligne avait été dessinée
+
+**Cause :**
+- Logique défaillante dans `handleResizeElement` qui traitait différemment les lignes verticales selon leur orientation (y1 > y2 ou y1 < y2)
+
+**Corrections appliquées :**
+1. **Approche unifiée** : Calcul de la longueur totale et application d'un facteur d'échelle
+2. **Simplification du code** : -48% de lignes pour les lignes, -41% pour les courbes
+3. **Comportement cohérent** : `+` agrandit toujours, `-` réduit toujours, quelle que soit l'orientation
+
+**Fichiers modifiés :**
+- `src/hooks/useElementTransforms.js` : Refonte complète de la logique de redimensionnement
+
+**Impact :**
+- ✅ Comportement prévisible et cohérent pour toutes les orientations de lignes
+- ✅ Fonctionne correctement pour les lignes horizontales, verticales et diagonales
+- ✅ Les courbes se redimensionnent également de manière cohérente
+- ✅ Code plus simple et maintenable
+
+**Documentation :**
+- `BUGFIX_RESIZE_LINES.md` : Documentation détaillée avec exemples
+
+---
+
 ## Version 0.1.0 - 24 Octobre 2025
 
 ### 🏗️ Refactoring majeur : Architecture modulaire
