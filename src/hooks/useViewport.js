@@ -39,6 +39,7 @@ export const useViewport = () => {
 
   return {
     viewport,
+    setViewport,
     isPanning,
     handlePan,
     handleZoom,

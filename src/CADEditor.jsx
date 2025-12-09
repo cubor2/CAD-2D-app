@@ -21,6 +21,7 @@ import { findSnapPoints, findGuideSnapPosition, computeSnap } from './utils/snap
 import { RULER_SIZE, GRID_SIZE, GUIDE_SNAP_DISTANCE } from './constants';
 import { getTextDimensions, invalidateTextCache } from './utils/textMeasurement';
 import { getElementControlPoints, findNearestControlPoint, getCursorForControlPoint, isPointInElement } from './utils/elementGeometry';
+import { calculateGroupBoundingBox } from './utils/BoundingBox';
 
 const CADEditor = () => {
   const canvasRef = useRef(null);
@@ -80,7 +81,7 @@ const CADEditor = () => {
   
   const [hoverCursor, setHoverCursor] = useState('default');
   
-  const { viewport, isPanning, handlePan, handleZoom, startPan, endPan } = useViewport();
+  const { viewport, setViewport, isPanning, handlePan, handleZoom, startPan, endPan } = useViewport();
   
   const {
     elements,
@@ -625,6 +626,7 @@ const CADEditor = () => {
       if (pointType === 'topRight' || pointType === 'bottomLeft') return 'nesw-resize';
       if (pointType === 'top' || pointType === 'bottom') return 'ns-resize';
       if (pointType === 'left' || pointType === 'right') return 'ew-resize';
+      if (pointType === 'center') return 'move';
       if (pointType === 'middle' || pointType === 'control') return 'grabbing';
       if (pointType === 'start' || pointType === 'end') return 'grabbing';
     }
@@ -698,6 +700,56 @@ const CADEditor = () => {
     }
 
     if (tool === 'select') {
+      const CLICK_DISTANCE = 20 / viewport.zoom;
+      
+      const selectedGroup = selectedIds.length > 1 ? groups.find(g => 
+        selectedIds.length === g.elementIds.length && 
+        selectedIds.every(id => g.elementIds.includes(id))
+      ) : null;
+
+      if (selectedGroup) {
+        const selectedElements = elements.filter(el => selectedIds.includes(el.id));
+        const boundingBox = calculateGroupBoundingBox(selectedElements);
+        
+        if (boundingBox) {
+          const groupControlPoints = [
+            { x: boundingBox.topLeft.x, y: boundingBox.topLeft.y, label: 'topLeft' },
+            { x: boundingBox.topRight.x, y: boundingBox.topRight.y, label: 'topRight' },
+            { x: boundingBox.bottomLeft.x, y: boundingBox.bottomLeft.y, label: 'bottomLeft' },
+            { x: boundingBox.bottomRight.x, y: boundingBox.bottomRight.y, label: 'bottomRight' },
+            { x: boundingBox.center.x, y: boundingBox.center.y, label: 'center' },
+            { x: boundingBox.top.x, y: boundingBox.top.y, label: 'top' },
+            { x: boundingBox.right.x, y: boundingBox.right.y, label: 'right' },
+            { x: boundingBox.bottom.x, y: boundingBox.bottom.y, label: 'bottom' },
+            { x: boundingBox.left.x, y: boundingBox.left.y, label: 'left' }
+          ];
+          
+          for (const cp of groupControlPoints) {
+            const dist = Math.sqrt((cp.x - point.x) ** 2 + (cp.y - point.y) ** 2);
+            if (dist < CLICK_DISTANCE) {
+              setDragStart({ x: point.x, y: point.y });
+              setIsDraggingElements(true);
+              setDragOriginalElements(selectedElements);
+              setSnapPoint(null);
+              return;
+            }
+          }
+          
+          const isInsideBoundingBox = snapped.x >= boundingBox.x && 
+                                       snapped.x <= boundingBox.x + boundingBox.width &&
+                                       snapped.y >= boundingBox.y && 
+                                       snapped.y <= boundingBox.y + boundingBox.height;
+          
+          if (isInsideBoundingBox) {
+            setDragStart({ x: snapped.x, y: snapped.y });
+            setIsDraggingElements(true);
+            setDragOriginalElements(selectedElements);
+            setSnapPoint(null);
+            return;
+          }
+        }
+      }
+      
       const clicked = [...elements].reverse().find(el => {
         if (el.type === 'line') {
           const dist = pointToLineDistance(snapped, { x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 });
@@ -927,8 +979,50 @@ const CADEditor = () => {
         }
       }
       
-      for (const el of elements.filter(e => selectedIds.includes(e.id))) {
-        let controlPoints = [];
+      const selectedGroup = selectedIds.length > 1 ? groups.find(g => 
+        selectedIds.length === g.elementIds.length && 
+        selectedIds.every(id => g.elementIds.includes(id))
+      ) : null;
+
+      if (selectedGroup) {
+        const selectedElements = elements.filter(el => selectedIds.includes(el.id));
+        const boundingBox = calculateGroupBoundingBox(selectedElements);
+        
+        if (boundingBox) {
+          const groupControlPoints = [
+            { x: boundingBox.topLeft.x, y: boundingBox.topLeft.y, label: 'topLeft' },
+            { x: boundingBox.topRight.x, y: boundingBox.topRight.y, label: 'topRight' },
+            { x: boundingBox.bottomLeft.x, y: boundingBox.bottomLeft.y, label: 'bottomLeft' },
+            { x: boundingBox.bottomRight.x, y: boundingBox.bottomRight.y, label: 'bottomRight' },
+            { x: boundingBox.center.x, y: boundingBox.center.y, label: 'center' },
+            { x: boundingBox.top.x, y: boundingBox.top.y, label: 'top' },
+            { x: boundingBox.right.x, y: boundingBox.right.y, label: 'right' },
+            { x: boundingBox.bottom.x, y: boundingBox.bottom.y, label: 'bottom' },
+            { x: boundingBox.left.x, y: boundingBox.left.y, label: 'left' }
+          ];
+          
+          for (const cp of groupControlPoints) {
+            const dist = Math.sqrt((cp.x - point.x) ** 2 + (cp.y - point.y) ** 2);
+            if (dist < CLICK_DISTANCE) {
+              setEditingPoint({
+                elementId: 'group',
+                groupId: selectedGroup.id,
+                pointType: cp.label,
+                originalElements: selectedElements.map(el => JSON.parse(JSON.stringify(el))),
+                originalBoundingBox: boundingBox,
+                startPoint: { x: point.x, y: point.y }
+              });
+              setDragStart({ x: point.x, y: point.y });
+              setSnapPoint(null);
+              return;
+            }
+          }
+        }
+      }
+      
+      if (!selectedGroup) {
+        for (const el of elements.filter(e => selectedIds.includes(e.id))) {
+          let controlPoints = [];
         
         if (el.type === 'text') {
           // Pour les textes, on détecte d'abord si on clique dans le texte lui-même
@@ -1025,8 +1119,9 @@ const CADEditor = () => {
           }
         }
       }
+      }      
 
-      
+      if (!selectedGroup) {
       const EDGE_CLICK_DISTANCE = 5 / viewport.zoom;
       
       for (const el of elements.filter(e => selectedIds.includes(e.id) && e.type === 'rectangle')) {
@@ -1137,6 +1232,7 @@ const CADEditor = () => {
           return;
         }
       }
+      }
 
       for (const el of elements) {
         if (selectedIds.includes(el.id)) continue;
@@ -1183,7 +1279,10 @@ const CADEditor = () => {
         });
         
         if (pointOnElement) {
-          setSelectedIds([el.id]);
+          const groupSelected = selectGroup(el.id);
+          if (!groupSelected) {
+            setSelectedIds([el.id]);
+          }
           setEditingPoint({
             elementId: el.id,
             pointType: pointOnElement.label,
@@ -1267,8 +1366,10 @@ const CADEditor = () => {
         if (e.shiftKey) {
           toggleSelection(clicked.id);
         } else {
-          // Toujours permettre de changer la sélection, même si l'élément est déjà sélectionné
-          setSelectedIds([clicked.id]);
+          const groupSelected = selectGroup(clicked.id);
+          if (!groupSelected) {
+            setSelectedIds([clicked.id]);
+          }
           if (clicked.type === 'text') {
             if (editingTextId && editingTextId !== clicked.id) {
               updateElements(elements);
@@ -1397,23 +1498,79 @@ const CADEditor = () => {
       if (selectedIds.length > 0 && tool !== 'text') {
         const selectedElements = elements.filter(e => selectedIds.includes(e.id));
         
-        // Vérifier les control points des éléments sélectionnés
-        for (const el of selectedElements) {
-          // Vérifier les control points (même logique pour tous les types d'éléments)
-          const nearest = findNearestControlPoint(point, el, viewport, tool, 20);
-          if (nearest) {
-            snappedX = nearest.point.x;
-            snappedY = nearest.point.y;
-            foundControlPoint = true;
-            setSnapPoint({
-              x: snappedX,
-              y: snappedY,
-              type: 'controlPoint',
-              priority: 200
-            });
+        const selectedGroup = selectedIds.length > 1 ? groups.find(g => 
+          selectedIds.length === g.elementIds.length && 
+          selectedIds.every(id => g.elementIds.includes(id))
+        ) : null;
+        
+        if (selectedGroup) {
+          const boundingBox = calculateGroupBoundingBox(selectedElements);
+          
+          if (boundingBox) {
+            const groupControlPoints = [
+              { x: boundingBox.topLeft.x, y: boundingBox.topLeft.y, label: 'topLeft' },
+              { x: boundingBox.topRight.x, y: boundingBox.topRight.y, label: 'topRight' },
+              { x: boundingBox.bottomLeft.x, y: boundingBox.bottomLeft.y, label: 'bottomLeft' },
+              { x: boundingBox.bottomRight.x, y: boundingBox.bottomRight.y, label: 'bottomRight' },
+              { x: boundingBox.center.x, y: boundingBox.center.y, label: 'center' },
+              { x: boundingBox.top.x, y: boundingBox.top.y, label: 'top' },
+              { x: boundingBox.right.x, y: boundingBox.right.y, label: 'right' },
+              { x: boundingBox.bottom.x, y: boundingBox.bottom.y, label: 'bottom' },
+              { x: boundingBox.left.x, y: boundingBox.left.y, label: 'left' }
+            ];
             
-            setHoverCursor(getCursorForControlPoint(nearest.point.label, tool, el.type));
-            break;
+            const HOVER_DISTANCE = 20 / viewport.zoom;
+            for (const cp of groupControlPoints) {
+              const dist = Math.sqrt((cp.x - point.x) ** 2 + (cp.y - point.y) ** 2);
+              if (dist < HOVER_DISTANCE) {
+                snappedX = cp.x;
+                snappedY = cp.y;
+                foundControlPoint = true;
+                setSnapPoint({
+                  x: snappedX,
+                  y: snappedY,
+                  type: 'controlPoint',
+                  priority: 200
+                });
+                
+                setHoverCursor(getCursorForControlPoint(cp.label, tool, 'group'));
+                break;
+              }
+            }
+          }
+          
+          if (!foundControlPoint) {
+            const isInsideBoundingBox = point.x >= boundingBox.x && 
+                                         point.x <= boundingBox.x + boundingBox.width &&
+                                         point.y >= boundingBox.y && 
+                                         point.y <= boundingBox.y + boundingBox.height;
+            
+            if (isInsideBoundingBox && tool === 'select') {
+              setHoverCursor('move');
+              foundControlPoint = true;
+            }
+          }
+        }
+        
+        if (!foundControlPoint && !selectedGroup) {
+          // Vérifier les control points des éléments sélectionnés
+          for (const el of selectedElements) {
+            // Vérifier les control points (même logique pour tous les types d'éléments)
+            const nearest = findNearestControlPoint(point, el, viewport, tool, 20);
+            if (nearest) {
+              snappedX = nearest.point.x;
+              snappedY = nearest.point.y;
+              foundControlPoint = true;
+              setSnapPoint({
+                x: snappedX,
+                y: snappedY,
+                type: 'controlPoint',
+                priority: 200
+              });
+              
+              setHoverCursor(getCursorForControlPoint(nearest.point.label, tool, el.type));
+              break;
+            }
           }
         }
       }
@@ -1483,6 +1640,126 @@ const CADEditor = () => {
     }
 
     if (tool === 'edit' && editingPoint && dragStart) {
+      if (editingPoint.elementId === 'group') {
+        const snapped = applySnap(point, selectedIds, false);
+        updateSnapPointForDrag(snapped.snapInfo);
+        
+        const dx = snapped.x - editingPoint.startPoint.x;
+        const dy = snapped.y - editingPoint.startPoint.y;
+        const origBBox = editingPoint.originalBoundingBox;
+        
+        const pointType = editingPoint.pointType;
+        
+        if (pointType === 'center') {
+          setElements(elements.map(el => {
+            const orig = editingPoint.originalElements.find(o => o.id === el.id);
+            if (!orig) return el;
+            
+            if (el.type === 'line' || el.type === 'fingerJoint') {
+              return { ...el, x1: orig.x1 + dx, y1: orig.y1 + dy, x2: orig.x2 + dx, y2: orig.y2 + dy };
+            } else if (el.type === 'curve') {
+              return { ...el, x1: orig.x1 + dx, y1: orig.y1 + dy, x2: orig.x2 + dx, y2: orig.y2 + dy, cpx: orig.cpx + dx, cpy: orig.cpy + dy };
+            } else if (el.type === 'rectangle' || el.type === 'text') {
+              return { ...el, x: orig.x + dx, y: orig.y + dy };
+            } else if (el.type === 'circle' || el.type === 'arc') {
+              return { ...el, cx: orig.cx + dx, cy: orig.cy + dy };
+            }
+            return el;
+          }));
+        } else {
+          let scaleX = 1, scaleY = 1;
+          let anchorX = origBBox.center.x, anchorY = origBBox.center.y;
+          
+          if (pointType === 'topLeft') {
+            anchorX = origBBox.bottomRight.x;
+            anchorY = origBBox.bottomRight.y;
+            scaleX = (origBBox.width - dx) / origBBox.width;
+            scaleY = (origBBox.height - dy) / origBBox.height;
+            if (e.shiftKey) {
+              const avgScale = (scaleX + scaleY) / 2;
+              scaleX = scaleY = avgScale;
+            }
+          } else if (pointType === 'topRight') {
+            anchorX = origBBox.bottomLeft.x;
+            anchorY = origBBox.bottomLeft.y;
+            scaleX = (origBBox.width + dx) / origBBox.width;
+            scaleY = (origBBox.height - dy) / origBBox.height;
+            if (e.shiftKey) {
+              const avgScale = (scaleX + scaleY) / 2;
+              scaleX = scaleY = avgScale;
+            }
+          } else if (pointType === 'bottomLeft') {
+            anchorX = origBBox.topRight.x;
+            anchorY = origBBox.topRight.y;
+            scaleX = (origBBox.width - dx) / origBBox.width;
+            scaleY = (origBBox.height + dy) / origBBox.height;
+            if (e.shiftKey) {
+              const avgScale = (scaleX + scaleY) / 2;
+              scaleX = scaleY = avgScale;
+            }
+          } else if (pointType === 'bottomRight') {
+            anchorX = origBBox.topLeft.x;
+            anchorY = origBBox.topLeft.y;
+            scaleX = (origBBox.width + dx) / origBBox.width;
+            scaleY = (origBBox.height + dy) / origBBox.height;
+            if (e.shiftKey) {
+              const avgScale = (scaleX + scaleY) / 2;
+              scaleX = scaleY = avgScale;
+            }
+          } else if (pointType === 'top') {
+            anchorY = origBBox.bottom.y;
+            scaleY = (origBBox.height - dy) / origBBox.height;
+          } else if (pointType === 'bottom') {
+            anchorY = origBBox.top.y;
+            scaleY = (origBBox.height + dy) / origBBox.height;
+          } else if (pointType === 'left') {
+            anchorX = origBBox.right.x;
+            scaleX = (origBBox.width - dx) / origBBox.width;
+          } else if (pointType === 'right') {
+            anchorX = origBBox.left.x;
+            scaleX = (origBBox.width + dx) / origBBox.width;
+          }
+          
+          scaleX = Math.max(0.01, scaleX);
+          scaleY = Math.max(0.01, scaleY);
+          
+          setElements(elements.map(el => {
+            const orig = editingPoint.originalElements.find(o => o.id === el.id);
+            if (!orig) return el;
+            
+            if (el.type === 'line' || el.type === 'fingerJoint') {
+              const newX1 = anchorX + (orig.x1 - anchorX) * scaleX;
+              const newY1 = anchorY + (orig.y1 - anchorY) * scaleY;
+              const newX2 = anchorX + (orig.x2 - anchorX) * scaleX;
+              const newY2 = anchorY + (orig.y2 - anchorY) * scaleY;
+              return { ...el, x1: newX1, y1: newY1, x2: newX2, y2: newY2 };
+            } else if (el.type === 'curve') {
+              const newX1 = anchorX + (orig.x1 - anchorX) * scaleX;
+              const newY1 = anchorY + (orig.y1 - anchorY) * scaleY;
+              const newX2 = anchorX + (orig.x2 - anchorX) * scaleX;
+              const newY2 = anchorY + (orig.y2 - anchorY) * scaleY;
+              const newCpx = anchorX + (orig.cpx - anchorX) * scaleX;
+              const newCpy = anchorY + (orig.cpy - anchorY) * scaleY;
+              return { ...el, x1: newX1, y1: newY1, x2: newX2, y2: newY2, cpx: newCpx, cpy: newCpy };
+            } else if (el.type === 'rectangle' || el.type === 'text') {
+              const newX = anchorX + (orig.x - anchorX) * scaleX;
+              const newY = anchorY + (orig.y - anchorY) * scaleY;
+              const newWidth = orig.width * scaleX;
+              const newHeight = orig.height * scaleY;
+              return { ...el, x: newX, y: newY, width: newWidth, height: newHeight };
+            } else if (el.type === 'circle' || el.type === 'arc') {
+              const newCx = anchorX + (orig.cx - anchorX) * scaleX;
+              const newCy = anchorY + (orig.cy - anchorY) * scaleY;
+              const newRadiusX = (orig.radiusX || orig.radius) * scaleX;
+              const newRadiusY = (orig.radiusY || orig.radius) * scaleY;
+              return { ...el, cx: newCx, cy: newCy, radiusX: newRadiusX, radiusY: newRadiusY, radius: Math.max(newRadiusX, newRadiusY) };
+            }
+            return el;
+          }));
+        }
+        return;
+      }
+      
       const snapped = applySnap(point, [editingPoint.elementId], false);
       const el = elements.find(e => e.id === editingPoint.elementId);
       if (!el) return;
@@ -1502,10 +1779,14 @@ const CADEditor = () => {
             const widthScale = Math.abs(newWidth) / orig.width;
             const heightScale = Math.abs(newHeight) / orig.height;
             const scale = (widthScale + heightScale) / 2;
-            newWidth = Math.round(orig.width * scale / GRID_SIZE) * GRID_SIZE;
-            newHeight = Math.round(orig.height * scale / GRID_SIZE) * GRID_SIZE;
-            const newX = Math.round((origCenterX - newWidth / 2) / GRID_SIZE) * GRID_SIZE;
-            const newY = Math.round((origCenterY - newHeight / 2) / GRID_SIZE) * GRID_SIZE;
+            newWidth = orig.width * scale;
+            newHeight = orig.height * scale;
+            const anchorX = orig.x + orig.width;
+            const anchorY = orig.y + orig.height;
+            const newX = Math.round((anchorX - newWidth) / GRID_SIZE) * GRID_SIZE;
+            const newY = Math.round((anchorY - newHeight) / GRID_SIZE) * GRID_SIZE;
+            newWidth = Math.round(newWidth / GRID_SIZE) * GRID_SIZE;
+            newHeight = Math.round(newHeight / GRID_SIZE) * GRID_SIZE;
             setElements(prev => prev.map(item =>
               item.id === el.id ? { ...item, x: newX, y: newY, width: newWidth, height: newHeight } : item
             ));
@@ -1526,12 +1807,15 @@ const CADEditor = () => {
             const widthScale = Math.abs(newWidth) / orig.width;
             const heightScale = Math.abs(newHeight) / orig.height;
             const scale = (widthScale + heightScale) / 2;
-            newWidth = Math.round(orig.width * scale / GRID_SIZE) * GRID_SIZE;
-            newHeight = Math.round(orig.height * scale / GRID_SIZE) * GRID_SIZE;
-            const newX = Math.round((origCenterX - newWidth / 2) / GRID_SIZE) * GRID_SIZE;
-            const newY = Math.round((origCenterY - newHeight / 2) / GRID_SIZE) * GRID_SIZE;
-          setElements(prev => prev.map(item =>
-              item.id === el.id ? { ...item, x: newX, y: newY, width: newWidth, height: newHeight } : item
+            newWidth = orig.width * scale;
+            newHeight = orig.height * scale;
+            const anchorX = orig.x;
+            const anchorY = orig.y + orig.height;
+            const newY = Math.round((anchorY - newHeight) / GRID_SIZE) * GRID_SIZE;
+            newWidth = Math.round(newWidth / GRID_SIZE) * GRID_SIZE;
+            newHeight = Math.round(newHeight / GRID_SIZE) * GRID_SIZE;
+            setElements(prev => prev.map(item =>
+              item.id === el.id ? { ...item, y: newY, width: newWidth, height: newHeight } : item
             ));
           } else {
             const newY = Math.round((orig.y + orig.height - newHeight) / GRID_SIZE) * GRID_SIZE;
@@ -1549,12 +1833,15 @@ const CADEditor = () => {
             const widthScale = Math.abs(newWidth) / orig.width;
             const heightScale = Math.abs(newHeight) / orig.height;
             const scale = (widthScale + heightScale) / 2;
-            newWidth = Math.round(orig.width * scale / GRID_SIZE) * GRID_SIZE;
-            newHeight = Math.round(orig.height * scale / GRID_SIZE) * GRID_SIZE;
-            const newX = Math.round((origCenterX - newWidth / 2) / GRID_SIZE) * GRID_SIZE;
-            const newY = Math.round((origCenterY - newHeight / 2) / GRID_SIZE) * GRID_SIZE;
-          setElements(prev => prev.map(item =>
-              item.id === el.id ? { ...item, x: newX, y: newY, width: newWidth, height: newHeight } : item
+            newWidth = orig.width * scale;
+            newHeight = orig.height * scale;
+            const anchorX = orig.x + orig.width;
+            const anchorY = orig.y;
+            const newX = Math.round((anchorX - newWidth) / GRID_SIZE) * GRID_SIZE;
+            newWidth = Math.round(newWidth / GRID_SIZE) * GRID_SIZE;
+            newHeight = Math.round(newHeight / GRID_SIZE) * GRID_SIZE;
+            setElements(prev => prev.map(item =>
+              item.id === el.id ? { ...item, x: newX, width: newWidth, height: newHeight } : item
             ));
           } else {
             const newX = Math.round((orig.x + orig.width - newWidth) / GRID_SIZE) * GRID_SIZE;
@@ -1572,19 +1859,19 @@ const CADEditor = () => {
             const widthScale = Math.abs(newWidth) / orig.width;
             const heightScale = Math.abs(newHeight) / orig.height;
             const scale = (widthScale + heightScale) / 2;
-            newWidth = Math.round(orig.width * scale / GRID_SIZE) * GRID_SIZE;
-            newHeight = Math.round(orig.height * scale / GRID_SIZE) * GRID_SIZE;
-            const newX = Math.round((origCenterX - newWidth / 2) / GRID_SIZE) * GRID_SIZE;
-            const newY = Math.round((origCenterY - newHeight / 2) / GRID_SIZE) * GRID_SIZE;
+            newWidth = orig.width * scale;
+            newHeight = orig.height * scale;
+            newWidth = Math.round(newWidth / GRID_SIZE) * GRID_SIZE;
+            newHeight = Math.round(newHeight / GRID_SIZE) * GRID_SIZE;
             setElements(prev => prev.map(item =>
-              item.id === el.id ? { ...item, x: newX, y: newY, width: newWidth, height: newHeight } : item
+              item.id === el.id ? { ...item, width: newWidth, height: newHeight } : item
             ));
           } else {
             newWidth = Math.round(newWidth / GRID_SIZE) * GRID_SIZE;
             newHeight = Math.round(newHeight / GRID_SIZE) * GRID_SIZE;
-          setElements(prev => prev.map(item =>
-            item.id === el.id ? { ...item, width: newWidth, height: newHeight } : item
-          ));
+            setElements(prev => prev.map(item =>
+              item.id === el.id ? { ...item, width: newWidth, height: newHeight } : item
+            ));
           }
         } else if (editingPoint.pointType === 'top') {
           let newHeight = orig.y + orig.height - snapped.y;
@@ -2162,10 +2449,28 @@ const CADEditor = () => {
   const handleWheel = useCallback((e) => {
     if (e.shiftKey) {
       e.preventDefault();
+      const canvas = getCanvasRef().current;
+      if (!canvas) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      const worldPoint = screenToWorld(e.clientX, e.clientY, canvas, viewport);
+      
       const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-      handleZoom(zoomFactor);
+      const newZoom = Math.max(0.1, Math.min(15.12, viewport.zoom * zoomFactor));
+      
+      const newViewportX = mouseX - worldPoint.x * newZoom - rect.width / 2;
+      const newViewportY = mouseY - worldPoint.y * newZoom - rect.height / 2;
+      
+      setViewport({
+        x: newViewportX,
+        y: newViewportY,
+        zoom: newZoom
+      });
     }
-  }, [handleZoom]);
+  }, [viewport, setViewport]);
 
   return (
     <div className="flex h-screen bg-drawhard-beige text-drawhard-text">
@@ -2215,6 +2520,7 @@ const CADEditor = () => {
               viewport={viewport}
               elements={elements}
               selectedIds={selectedIds}
+              groups={groups}
               currentElement={currentElement}
               snapPoint={editingTextId ? null : snapPoint}
               selectionBox={selectionBox}

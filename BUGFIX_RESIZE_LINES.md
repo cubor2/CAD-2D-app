@@ -257,3 +257,5 @@ const scale = newLength / currentLength;
 **Status final :** ✅ Bug corrigé, comportement cohérent et prévisible
 
 
+
+

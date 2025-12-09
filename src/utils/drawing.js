@@ -175,7 +175,7 @@ export const drawOriginCross = (ctx, canvas, viewport, worldX, worldY) => {
   ctx.stroke();
 };
 
-export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, isEditing, textCursorPosition, textSelectionStart, textSelectionEnd, tool) => {
+export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, isEditing, textCursorPosition, textSelectionStart, textSelectionEnd, tool, hideControlPoints = false) => {
   ctx.save();
 
   const isFlashing = flashingIds.includes(el.id);
@@ -230,7 +230,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.fillText(`${Math.round(arcLength)}mm`, textX, textY);
     }
     
-    if (isSelected) {
+    if (isSelected && !hideControlPoints) {
       const rx = el.radiusX || el.radius;
       const ry = el.radiusY || el.radius;
       const controlPoints = [
@@ -279,7 +279,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.fillText(`${Math.round(length)}mm`, midX + 5, midY - 5);
     }
     
-    if (isSelected) {
+    if (isSelected && !hideControlPoints) {
       const controlPoints = [
         worldToScreen(el.x1, el.y1, canvas, viewport),
         worldToScreen((el.x1 + el.x2) / 2, (el.y1 + el.y2) / 2, canvas, viewport),
@@ -342,7 +342,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.fillText(`${Math.round(length)}mm`, midX + 5, midY - 5);
     }
     
-    if (isSelected) {
+    if (isSelected && !hideControlPoints) {
       const controlPoints = [
         worldToScreen(el.x1, el.y1, canvas, viewport),
         worldToScreen((el.x1 + el.x2) / 2, (el.y1 + el.y2) / 2, canvas, viewport),
@@ -392,7 +392,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.fillText(`~${Math.round(length)}mm`, midX + 5, midY - 5);
     }
     
-    if (isSelected) {
+    if (isSelected && !hideControlPoints) {
       ctx.save();
       ctx.setLineDash([3, 3]);
       ctx.strokeStyle = '#00aaff';
@@ -468,7 +468,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       ctx.fillText(`${Math.round(Math.abs(el.height))}mm`, topLeft.x + width + 5, topLeft.y + height / 2);
     }
     
-    if (isSelected) {
+    if (isSelected && !hideControlPoints) {
       const controlPoints = [
         worldToScreen(el.x, el.y, canvas, viewport),
         worldToScreen(el.x + el.width, el.y, canvas, viewport),
@@ -543,7 +543,7 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
       }
     }
     
-    if (isSelected) {
+    if (isSelected && !hideControlPoints) {
       const controlPoints = [
         worldToScreen(el.cx, el.cy, canvas, viewport),
         worldToScreen(el.cx + (el.radiusX || el.radius), el.cy, canvas, viewport),
@@ -827,6 +827,45 @@ export const drawElement = (ctx, canvas, viewport, el, isSelected, flashingIds, 
     }
   }
 
+  ctx.restore();
+};
+
+export const drawGroupBoundingBox = (ctx, canvas, viewport, boundingBox, tool) => {
+  const selectionColor = tool === 'edit' ? '#0EA5E9' : '#E44A33';
+  const topLeft = worldToScreen(boundingBox.x, boundingBox.y, canvas, viewport);
+  const bottomRight = worldToScreen(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height, canvas, viewport);
+  const width = bottomRight.x - topLeft.x;
+  const height = bottomRight.y - topLeft.y;
+  
+  ctx.save();
+  ctx.strokeStyle = selectionColor;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.strokeRect(topLeft.x, topLeft.y, width, height);
+  ctx.setLineDash([]);
+  
+  const controlPoints = [
+    worldToScreen(boundingBox.topLeft.x, boundingBox.topLeft.y, canvas, viewport),
+    worldToScreen(boundingBox.topRight.x, boundingBox.topRight.y, canvas, viewport),
+    worldToScreen(boundingBox.bottomLeft.x, boundingBox.bottomLeft.y, canvas, viewport),
+    worldToScreen(boundingBox.bottomRight.x, boundingBox.bottomRight.y, canvas, viewport),
+    worldToScreen(boundingBox.center.x, boundingBox.center.y, canvas, viewport),
+    worldToScreen(boundingBox.top.x, boundingBox.top.y, canvas, viewport),
+    worldToScreen(boundingBox.right.x, boundingBox.right.y, canvas, viewport),
+    worldToScreen(boundingBox.bottom.x, boundingBox.bottom.y, canvas, viewport),
+    worldToScreen(boundingBox.left.x, boundingBox.left.y, canvas, viewport)
+  ];
+  
+  controlPoints.forEach((pt, idx) => {
+    ctx.fillStyle = idx === 4 ? selectionColor : '#2B2B2B';
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+  
   ctx.restore();
 };
 

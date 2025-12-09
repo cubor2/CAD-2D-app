@@ -109,3 +109,74 @@ export function createTextBoundingBox(element, ctx) {
   return new BoundingBox(element.x, element.y - height, width, height);
 }
 
+export function calculateGroupBoundingBox(elements) {
+  if (elements.length === 0) return null;
+  
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  
+  elements.forEach(el => {
+    if (el.type === 'line') {
+      minX = Math.min(minX, el.x1, el.x2);
+      minY = Math.min(minY, el.y1, el.y2);
+      maxX = Math.max(maxX, el.x1, el.x2);
+      maxY = Math.max(maxY, el.y1, el.y2);
+    } else if (el.type === 'fingerJoint') {
+      const dx = el.x2 - el.x1;
+      const dy = el.y2 - el.y1;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      if (length > 0) {
+        const perpX = -dy / length;
+        const perpY = dx / length;
+        const thickness = el.thickness || 3;
+        
+        const offset = thickness / 2;
+        const x1a = el.x1 + perpX * offset;
+        const y1a = el.y1 + perpY * offset;
+        const x1b = el.x1 - perpX * offset;
+        const y1b = el.y1 - perpY * offset;
+        const x2a = el.x2 + perpX * offset;
+        const y2a = el.y2 + perpY * offset;
+        const x2b = el.x2 - perpX * offset;
+        const y2b = el.y2 - perpY * offset;
+        
+        minX = Math.min(minX, x1a, x1b, x2a, x2b);
+        minY = Math.min(minY, y1a, y1b, y2a, y2b);
+        maxX = Math.max(maxX, x1a, x1b, x2a, x2b);
+        maxY = Math.max(maxY, y1a, y1b, y2a, y2b);
+      } else {
+        minX = Math.min(minX, el.x1, el.x2);
+        minY = Math.min(minY, el.y1, el.y2);
+        maxX = Math.max(maxX, el.x1, el.x2);
+        maxY = Math.max(maxY, el.y1, el.y2);
+      }
+    } else if (el.type === 'curve') {
+      minX = Math.min(minX, el.x1, el.x2, el.cpx);
+      minY = Math.min(minY, el.y1, el.y2, el.cpy);
+      maxX = Math.max(maxX, el.x1, el.x2, el.cpx);
+      maxY = Math.max(maxY, el.y1, el.y2, el.cpy);
+    } else if (el.type === 'rectangle') {
+      minX = Math.min(minX, el.x, el.x + el.width);
+      minY = Math.min(minY, el.y, el.y + el.height);
+      maxX = Math.max(maxX, el.x, el.x + el.width);
+      maxY = Math.max(maxY, el.y, el.y + el.height);
+    } else if (el.type === 'circle' || el.type === 'arc') {
+      const radiusX = el.radiusX || el.radius;
+      const radiusY = el.radiusY || el.radius;
+      minX = Math.min(minX, el.cx - radiusX);
+      minY = Math.min(minY, el.cy - radiusY);
+      maxX = Math.max(maxX, el.cx + radiusX);
+      maxY = Math.max(maxY, el.cy + radiusY);
+    } else if (el.type === 'text') {
+      minX = Math.min(minX, el.x);
+      minY = Math.min(minY, el.y);
+      maxX = Math.max(maxX, el.x + el.width);
+      maxY = Math.max(maxY, el.y + el.height);
+    }
+  });
+  
+  return new BoundingBox(minX, minY, maxX - minX, maxY - minY);
+}
+

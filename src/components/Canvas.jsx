@@ -7,15 +7,18 @@ import {
   drawElement, 
   drawSnapPoint, 
   drawSelectionBox,
-  drawWorkArea
+  drawWorkArea,
+  drawGroupBoundingBox
 } from '../utils/drawing';
 import { worldToScreen } from '../utils/transforms';
 import { RULER_SIZE } from '../constants';
+import { calculateGroupBoundingBox } from '../utils/BoundingBox';
 
 const Canvas = React.memo(({
   viewport,
   elements,
   selectedIds,
+  groups,
   currentElement,
   snapPoint,
   selectionBox,
@@ -68,11 +71,25 @@ const Canvas = React.memo(({
       ctx.restore();
     }
 
+    const selectedGroup = selectedIds.length > 1 ? groups.find(g => 
+      selectedIds.length === g.elementIds.length && 
+      selectedIds.every(id => g.elementIds.includes(id))
+    ) : null;
+
     elements.forEach(el => {
       const isSelected = selectedIds.includes(el.id);
       const isEditing = editingTextId === el.id && (tool === 'edit' || tool === 'text');
-      drawElement(ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, isEditing, textCursorPosition, textSelectionStart, textSelectionEnd, tool);
+      const hideControlPoints = isSelected && selectedGroup;
+      drawElement(ctx, canvas, viewport, el, isSelected, flashingIds, flashType, selectedEdge, showDimensions, darkMode, currentElement, isEditing, textCursorPosition, textSelectionStart, textSelectionEnd, tool, hideControlPoints);
     });
+
+    if (selectedGroup) {
+      const selectedElements = elements.filter(el => selectedIds.includes(el.id));
+      const boundingBox = calculateGroupBoundingBox(selectedElements);
+      if (boundingBox) {
+        drawGroupBoundingBox(ctx, canvas, viewport, boundingBox, tool);
+      }
+    }
 
     if (currentElement) {
       if (currentElement.type === 'text') {
@@ -163,7 +180,7 @@ const Canvas = React.memo(({
     ctx.scale(dpr, dpr);
     
     draw();
-  }, [elements, viewport, selectedIds, currentElement, snapPoint, selectionBox, drawOrigin, selectedEdge, showDimensions, darkMode, showRulers, guides, flashingIds, flashType, editingTextId, textCursorPosition, textSelectionStart, textSelectionEnd, workArea]);
+  }, [elements, viewport, selectedIds, groups, currentElement, snapPoint, selectionBox, drawOrigin, selectedEdge, showDimensions, darkMode, showRulers, guides, flashingIds, flashType, editingTextId, textCursorPosition, textSelectionStart, textSelectionEnd, workArea]);
 
   useEffect(() => {
     const redraw = () => {

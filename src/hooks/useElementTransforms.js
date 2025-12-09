@@ -64,8 +64,8 @@ export const useElementTransforms = (selectedIds, elements, updateElements, grid
         const dy1 = el.y1 - centerY;
         const dx2 = el.x2 - centerX;
         const dy2 = el.y2 - centerY;
-        const p1 = snapToGridFn({ x: centerX + dx1 * cos - dy1 * sin, y: centerY + dx1 * sin + dy1 * cos });
-        const p2 = snapToGridFn({ x: centerX + dx2 * cos - dy2 * sin, y: centerY + dx2 * sin + dy2 * cos });
+        const p1 = { x: centerX + dx1 * cos - dy1 * sin, y: centerY + dx1 * sin + dy1 * cos };
+        const p2 = { x: centerX + dx2 * cos - dy2 * sin, y: centerY + dx2 * sin + dy2 * cos };
         return {
           ...el,
           x1: p1.x,
@@ -78,8 +78,8 @@ export const useElementTransforms = (selectedIds, elements, updateElements, grid
         const oldCenterY = el.y + el.height / 2;
         const dx = oldCenterX - centerX;
         const dy = oldCenterY - centerY;
-        const newCenter = snapToGridFn({ x: centerX + dx * cos - dy * sin, y: centerY + dx * sin + dy * cos });
-        const topLeft = snapToGridFn({ x: newCenter.x - el.height / 2, y: newCenter.y - el.width / 2 });
+        const newCenter = { x: centerX + dx * cos - dy * sin, y: centerY + dx * sin + dy * cos };
+        const topLeft = { x: newCenter.x - el.height / 2, y: newCenter.y - el.width / 2 };
         return {
           ...el,
           x: topLeft.x,
@@ -90,7 +90,7 @@ export const useElementTransforms = (selectedIds, elements, updateElements, grid
       } else if (el.type === 'circle') {
         const dx = el.cx - centerX;
         const dy = el.cy - centerY;
-        const center = snapToGridFn({ x: centerX + dx * cos - dy * sin, y: centerY + dx * sin + dy * cos });
+        const center = { x: centerX + dx * cos - dy * sin, y: centerY + dx * sin + dy * cos };
         return {
           ...el,
           cx: center.x,
@@ -99,7 +99,7 @@ export const useElementTransforms = (selectedIds, elements, updateElements, grid
       } else if (el.type === 'arc') {
         const dx = el.cx - centerX;
         const dy = el.cy - centerY;
-        const center = snapToGridFn({ x: centerX + dx * cos - dy * sin, y: centerY + dx * sin + dy * cos });
+        const center = { x: centerX + dx * cos - dy * sin, y: centerY + dx * sin + dy * cos };
         return {
           ...el,
           cx: center.x,
@@ -114,9 +114,9 @@ export const useElementTransforms = (selectedIds, elements, updateElements, grid
         const dy2 = el.y2 - centerY;
         const dxcp = el.cpx - centerX;
         const dycp = el.cpy - centerY;
-        const p1 = snapToGridFn({ x: centerX + dx1 * cos - dy1 * sin, y: centerY + dx1 * sin + dy1 * cos });
-        const p2 = snapToGridFn({ x: centerX + dx2 * cos - dy2 * sin, y: centerY + dx2 * sin + dy2 * cos });
-        const cp = snapToGridFn({ x: centerX + dxcp * cos - dycp * sin, y: centerY + dxcp * sin + dycp * cos });
+        const p1 = { x: centerX + dx1 * cos - dy1 * sin, y: centerY + dx1 * sin + dy1 * cos };
+        const p2 = { x: centerX + dx2 * cos - dy2 * sin, y: centerY + dx2 * sin + dy2 * cos };
+        const cp = { x: centerX + dxcp * cos - dycp * sin, y: centerY + dxcp * sin + dycp * cos };
         return {
           ...el,
           x1: p1.x,
@@ -129,7 +129,7 @@ export const useElementTransforms = (selectedIds, elements, updateElements, grid
       }
       return el;
     }));
-  }, [selectedIds, elements, updateElements, snapToGridFn]);
+  }, [selectedIds, elements, updateElements]);
 
   /**
    * Symétrie horizontale (flip sur l'axe vertical)

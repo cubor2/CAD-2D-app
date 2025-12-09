@@ -28,3 +28,5 @@ export function handleTextClick(point, click, viewport, isPointClickable) {
 
 
 
+
+
